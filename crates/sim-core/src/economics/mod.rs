@@ -1,6 +1,6 @@
 //! Deterministic fees, scheduled cash flows, and corporate-action adjustments.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use crate::ledger::{Ledger, LedgerAccount, LedgerError, NewTransaction, Posting};
 use crate::numeric::{
@@ -38,6 +38,23 @@ pub enum LiquidityRole {
     Taker,
 }
 
+/// One exact execution-fee calculation request.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExecutionFeeInput {
+    /// Logical event sequence causing the fee.
+    pub event_seq: u64,
+    /// Filled quantity.
+    pub quantity: QtyAtoms,
+    /// Execution price.
+    pub price: PriceAtoms,
+    /// Signed PPB rate; negative rates are rebates.
+    pub rate: RatePpb,
+    /// Maker/taker classification.
+    pub role: LiquidityRole,
+    /// Exact fixed-point conversion configuration.
+    pub math: EconomicsMath,
+}
+
 /// Stable source identity for a scheduled economic event.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct ScheduledEconomicId {
@@ -52,7 +69,10 @@ impl ScheduledEconomicId {
     ///
     /// # Errors
     /// Returns [`EconomicsError::InvalidIdentity`] for empty fields.
-    pub fn new(source: impl Into<String>, event_id: impl Into<String>) -> Result<Self, EconomicsError> {
+    pub fn new(
+        source: impl Into<String>,
+        event_id: impl Into<String>,
+    ) -> Result<Self, EconomicsError> {
         let value = Self {
             source: source.into(),
             event_id: event_id.into(),
@@ -62,6 +82,36 @@ impl ScheduledEconomicId {
         }
         Ok(value)
     }
+}
+
+/// One signed scheduled cash flow.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduledCashFlow {
+    /// Stable provider/source event identity.
+    pub id: ScheduledEconomicId,
+    /// Logical event sequence causing the posting.
+    pub event_seq: u64,
+    /// Signed cash delta; positive means cash received.
+    pub cash_delta: MoneyMinor,
+}
+
+/// One non-negative scheduled charge.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduledCharge {
+    /// Stable provider/source event identity.
+    pub id: ScheduledEconomicId,
+    /// Logical event sequence causing the posting.
+    pub event_seq: u64,
+    /// Positive/zero cash charge.
+    pub charge: MoneyMinor,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ScheduledFingerprint {
+    event_seq: u64,
+    kind: &'static str,
+    account: LedgerAccount,
+    cash_delta: MoneyMinor,
 }
 
 /// Exact split ratio `numerator / denominator` applied to quantities.
@@ -107,6 +157,8 @@ pub enum EconomicsError {
     InvalidIdentity,
     /// A charge that must be non-negative was negative.
     NegativeCharge,
+    /// An event ID was retried with changed authoritative economics.
+    ScheduledConflict,
     /// A split ratio was zero or produced a non-integral exact transform.
     InvalidSplit,
     /// Checked integer arithmetic failed.
@@ -122,6 +174,9 @@ impl core::fmt::Display for EconomicsError {
         match self {
             Self::InvalidIdentity => formatter.write_str("economic event identity cannot be empty"),
             Self::NegativeCharge => formatter.write_str("economic charge cannot be negative"),
+            Self::ScheduledConflict => {
+                formatter.write_str("economic event id reused with changed posting")
+            }
             Self::InvalidSplit => formatter.write_str("split ratio cannot be represented exactly"),
             Self::Numeric(error) => write!(formatter, "economics arithmetic failed: {error}"),
             Self::Ledger(error) => write!(formatter, "economics ledger posting failed: {error}"),
@@ -153,7 +208,7 @@ impl From<PositionError> for EconomicsError {
 /// Idempotent deterministic economic-event processor.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EconomicsState {
-    posted_scheduled: BTreeSet<ScheduledEconomicId>,
+    posted_scheduled: BTreeMap<ScheduledEconomicId, ScheduledFingerprint>,
 }
 
 impl EconomicsState {
@@ -161,14 +216,14 @@ impl EconomicsState {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            posted_scheduled: BTreeSet::new(),
+            posted_scheduled: BTreeMap::new(),
         }
     }
 
     /// Returns whether a scheduled source event has already posted.
     #[must_use]
     pub fn has_posted(&self, id: &ScheduledEconomicId) -> bool {
-        self.posted_scheduled.contains(id)
+        self.posted_scheduled.contains_key(id)
     }
 
     /// Posts a maker/taker fee or rebate for one fill.
@@ -181,59 +236,51 @@ impl EconomicsState {
     pub fn post_execution_fee(
         &self,
         ledger: &mut Ledger,
-        *,
-        event_seq: u64,
-        quantity: QtyAtoms,
-        price: PriceAtoms,
-        rate: RatePpb,
-        role: LiquidityRole,
-        math: EconomicsMath,
+        input: ExecutionFeeInput,
     ) -> Result<MoneyMinor, EconomicsError> {
         let notional = linear_notional_minor(
-            quantity,
-            price,
-            math.contract_multiplier_atoms,
-            math.qty_scale,
-            math.price_scale,
-            math.multiplier_scale,
-            math.settlement_scale,
-            math.rounding,
+            input.quantity,
+            input.price,
+            input.math.contract_multiplier_atoms,
+            input.math.qty_scale,
+            input.math.price_scale,
+            input.math.multiplier_scale,
+            input.math.settlement_scale,
+            input.math.rounding,
         )?;
         let absolute_notional = notional
             .get()
             .checked_abs()
             .ok_or(NumericError::Overflow)?;
-        let fee = apply_rate_ppb(MoneyMinor::new(absolute_notional), rate, math.rounding)?;
-        let kind = match role {
+        let fee = apply_rate_ppb(
+            MoneyMinor::new(absolute_notional),
+            input.rate,
+            input.math.rounding,
+        )?;
+        let kind = match input.role {
             LiquidityRole::Maker => "MAKER_FEE",
             LiquidityRole::Taker => "TAKER_FEE",
         };
-        post_charge(ledger, event_seq, kind, LedgerAccount::Fees, fee)?;
+        post_charge(ledger, input.event_seq, kind, LedgerAccount::Fees, fee)?;
         Ok(fee)
     }
 
     /// Posts one signed funding payment exactly once.
     ///
-    /// Positive `cash_delta` means the account receives funding; negative means it pays.
-    /// Exact retries of the same scheduled id are no-ops and return `false`.
+    /// Positive cash means funding received; negative means funding paid.
     ///
     /// # Errors
-    /// Returns a ledger error without recording the scheduled identity on failure.
+    /// Returns a ledger/idempotency error without consuming the event identity on failure.
     pub fn post_funding(
         &mut self,
         ledger: &mut Ledger,
-        *,
-        id: ScheduledEconomicId,
-        event_seq: u64,
-        cash_delta: MoneyMinor,
+        flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
         self.post_scheduled_cash_flow(
             ledger,
-            id,
-            event_seq,
+            flow,
             "FUNDING",
             LedgerAccount::Funding,
-            cash_delta,
         )
     }
 
@@ -244,26 +291,26 @@ impl EconomicsState {
     pub fn post_borrow_charge(
         &mut self,
         ledger: &mut Ledger,
-        *,
-        id: ScheduledEconomicId,
-        event_seq: u64,
-        charge: MoneyMinor,
+        charge: ScheduledCharge,
     ) -> Result<bool, EconomicsError> {
-        if charge.get() < 0 {
+        if charge.charge.get() < 0 {
             return Err(EconomicsError::NegativeCharge);
         }
         let cash_delta = charge
+            .charge
             .get()
             .checked_neg()
             .map(MoneyMinor::new)
             .ok_or(NumericError::Overflow)?;
         self.post_scheduled_cash_flow(
             ledger,
-            id,
-            event_seq,
+            ScheduledCashFlow {
+                id: charge.id,
+                event_seq: charge.event_seq,
+                cash_delta,
+            },
             "BORROW",
             LedgerAccount::Borrow,
-            cash_delta,
         )
     }
 
@@ -272,66 +319,69 @@ impl EconomicsState {
     /// Positive values are cash received; negative values model a short dividend liability.
     ///
     /// # Errors
-    /// Returns a ledger error without recording the scheduled identity on failure.
+    /// Returns a ledger/idempotency error without consuming the event identity on failure.
     pub fn post_dividend(
         &mut self,
         ledger: &mut Ledger,
-        *,
-        id: ScheduledEconomicId,
-        event_seq: u64,
-        cash_delta: MoneyMinor,
+        flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
         self.post_scheduled_cash_flow(
             ledger,
-            id,
-            event_seq,
+            flow,
             "DIVIDEND",
             LedgerAccount::Dividends,
-            cash_delta,
         )
     }
 
     /// Posts one signed futures/expiry settlement adjustment exactly once.
     ///
     /// # Errors
-    /// Returns a ledger error without recording the scheduled identity on failure.
+    /// Returns a ledger/idempotency error without consuming the event identity on failure.
     pub fn post_settlement(
         &mut self,
         ledger: &mut Ledger,
-        *,
-        id: ScheduledEconomicId,
-        event_seq: u64,
-        cash_delta: MoneyMinor,
+        flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
         self.post_scheduled_cash_flow(
             ledger,
-            id,
-            event_seq,
+            flow,
             "SETTLEMENT",
             LedgerAccount::Settlement,
-            cash_delta,
         )
     }
 
     fn post_scheduled_cash_flow(
         &mut self,
         ledger: &mut Ledger,
-        id: ScheduledEconomicId,
-        event_seq: u64,
-        kind: &str,
+        flow: ScheduledCashFlow,
+        kind: &'static str,
         account: LedgerAccount,
-        cash_delta: MoneyMinor,
     ) -> Result<bool, EconomicsError> {
-        if self.posted_scheduled.contains(&id) {
-            return Ok(false);
+        let fingerprint = ScheduledFingerprint {
+            event_seq: flow.event_seq,
+            kind,
+            account,
+            cash_delta: flow.cash_delta,
+        };
+        if let Some(existing) = self.posted_scheduled.get(&flow.id) {
+            if existing == &fingerprint {
+                return Ok(false);
+            }
+            return Err(EconomicsError::ScheduledConflict);
         }
-        post_cash_flow(ledger, event_seq, kind, account, cash_delta)?;
-        self.posted_scheduled.insert(id);
+        post_cash_flow(
+            ledger,
+            flow.event_seq,
+            kind,
+            account,
+            flow.cash_delta,
+        )?;
+        self.posted_scheduled.insert(flow.id, fingerprint);
         Ok(true)
     }
 }
 
-/// Applies a PPB rate to settlement minor units with an explicit signed rounding policy.
+/// Applies a PPB rate to settlement minor units with explicit signed rounding.
 ///
 /// # Errors
 /// Returns [`EconomicsError::Numeric`] if the multiplication/result overflows.
@@ -350,9 +400,8 @@ pub fn apply_rate_ppb(
 
 /// Computes an exact split-adjusted position without mutating the input.
 ///
-/// Quantity is multiplied by `numerator/denominator`; entry price is transformed by the
-/// inverse ratio so pre/post basis value is preserved. Non-integral atom transforms fail
-/// closed rather than silently round.
+/// Quantity is multiplied by `numerator/denominator`; entry price uses the inverse ratio,
+/// preserving pre/post basis value. Non-integral atom transforms fail closed.
 ///
 /// # Errors
 /// Returns [`EconomicsError::InvalidSplit`] or checked-overflow errors.
@@ -375,9 +424,8 @@ pub fn split_position(position: Position, ratio: SplitRatio) -> Result<Position,
 
 /// Computes exact split-adjusted order quantity/fills/prices.
 ///
-/// This pure transform is deliberately separate from the order state machine. The facade
-/// can apply the returned values atomically together with the position/corporate-action
-/// event, while this module owns the economic transform and exactness checks.
+/// This pure transform can be applied atomically by the simulator facade together with the
+/// position/corporate-action event. No hidden rounding enters the order state machine.
 ///
 /// # Errors
 /// Returns [`EconomicsError::InvalidSplit`] for non-integral atom transforms.
@@ -451,7 +499,11 @@ fn post_cash_flow(
     Ok(())
 }
 
-fn scale_signed_exact(value: i64, numerator: u64, denominator: u64) -> Result<i64, EconomicsError> {
+fn scale_signed_exact(
+    value: i64,
+    numerator: u64,
+    denominator: u64,
+) -> Result<i64, EconomicsError> {
     let product = i128::from(value)
         .checked_mul(i128::from(numerator))
         .ok_or(NumericError::Overflow)?;
@@ -492,7 +544,11 @@ fn scale_price_exact(
     Ok(PriceAtoms::new(value))
 }
 
-fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i128, NumericError> {
+fn div_round(
+    numerator: i128,
+    denominator: i128,
+    rounding: Rounding,
+) -> Result<i128, NumericError> {
     let quotient = numerator / denominator;
     let remainder = numerator % denominator;
     if remainder == 0 {
@@ -522,7 +578,7 @@ fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::orders::{OrderId, OrderStatus, Side, TimeInForce};
+    use crate::orders::{NewOrder, OrderState, Side, TimeInForce};
 
     fn math(rounding: Rounding) -> EconomicsMath {
         EconomicsMath {
@@ -539,6 +595,14 @@ mod tests {
         ScheduledEconomicId::new("fixture", id).unwrap()
     }
 
+    fn flow(id: &str, event_seq: u64, cash_delta: i64) -> ScheduledCashFlow {
+        ScheduledCashFlow {
+            id: scheduled(id),
+            event_seq,
+            cash_delta: MoneyMinor::new(cash_delta),
+        }
+    }
+
     #[test]
     fn maker_fee_and_rebate_post_exact_balanced_cash() {
         let state = EconomicsState::new();
@@ -546,12 +610,14 @@ mod tests {
         let fee = state
             .post_execution_fee(
                 &mut ledger,
-                event_seq: 1,
-                quantity: QtyAtoms::new(10),
-                price: PriceAtoms::new(20),
-                rate: RatePpb::new(5_000_000),
-                role: LiquidityRole::Maker,
-                math: math(Rounding::TowardZero),
+                ExecutionFeeInput {
+                    event_seq: 1,
+                    quantity: QtyAtoms::new(10),
+                    price: PriceAtoms::new(20),
+                    rate: RatePpb::new(5_000_000),
+                    role: LiquidityRole::Maker,
+                    math: math(Rounding::TowardZero),
+                },
             )
             .unwrap();
         assert_eq!(fee, MoneyMinor::new(1));
@@ -561,12 +627,14 @@ mod tests {
         let rebate = state
             .post_execution_fee(
                 &mut ledger,
-                event_seq: 2,
-                quantity: QtyAtoms::new(10),
-                price: PriceAtoms::new(20),
-                rate: RatePpb::new(-5_000_000),
-                role: LiquidityRole::Maker,
-                math: math(Rounding::TowardZero),
+                ExecutionFeeInput {
+                    event_seq: 2,
+                    quantity: QtyAtoms::new(10),
+                    price: PriceAtoms::new(20),
+                    rate: RatePpb::new(-5_000_000),
+                    role: LiquidityRole::Maker,
+                    math: math(Rounding::TowardZero),
+                },
             )
             .unwrap();
         assert_eq!(rebate, MoneyMinor::new(-1));
@@ -587,34 +655,25 @@ mod tests {
             MoneyMinor::new(1)
         );
         assert_eq!(
-            apply_rate_ppb(amount, RatePpb::new(-500_000_000), Rounding::Floor).unwrap(),
+            apply_rate_ppb(
+                amount,
+                RatePpb::new(-500_000_000),
+                Rounding::Floor,
+            )
+            .unwrap(),
             MoneyMinor::new(-1)
         );
     }
 
     #[test]
-    fn scheduled_payments_post_exactly_once() {
+    fn scheduled_payments_are_idempotent_and_conflict_safe() {
         let mut state = EconomicsState::new();
         let mut ledger = Ledger::new();
-        assert!(
-            state
-                .post_funding(
-                    &mut ledger,
-                    id: scheduled("funding-1"),
-                    event_seq: 5,
-                    cash_delta: MoneyMinor::new(-7),
-                )
-                .unwrap()
-        );
-        assert!(
-            !state
-                .post_funding(
-                    &mut ledger,
-                    id: scheduled("funding-1"),
-                    event_seq: 5,
-                    cash_delta: MoneyMinor::new(-7),
-                )
-                .unwrap()
+        assert!(state.post_funding(&mut ledger, flow("funding-1", 5, -7)).unwrap());
+        assert!(!state.post_funding(&mut ledger, flow("funding-1", 5, -7)).unwrap());
+        assert_eq!(
+            state.post_funding(&mut ledger, flow("funding-1", 5, -8)),
+            Err(EconomicsError::ScheduledConflict)
         );
         assert_eq!(ledger.transactions().count(), 1);
         assert_eq!(ledger.balance(LedgerAccount::Cash), MoneyMinor::new(-7));
@@ -636,9 +695,11 @@ mod tests {
         assert!(state
             .post_funding(
                 &mut ledger,
-                id: id.clone(),
-                event_seq: 1,
-                cash_delta: MoneyMinor::new(1),
+                ScheduledCashFlow {
+                    id: id.clone(),
+                    event_seq: 1,
+                    cash_delta: MoneyMinor::new(1),
+                },
             )
             .is_err());
         assert!(!state.has_posted(&id));
@@ -651,26 +712,18 @@ mod tests {
         state
             .post_borrow_charge(
                 &mut ledger,
-                id: scheduled("borrow"),
-                event_seq: 1,
-                charge: MoneyMinor::new(3),
+                ScheduledCharge {
+                    id: scheduled("borrow"),
+                    event_seq: 1,
+                    charge: MoneyMinor::new(3),
+                },
             )
             .unwrap();
         state
-            .post_dividend(
-                &mut ledger,
-                id: scheduled("dividend"),
-                event_seq: 2,
-                cash_delta: MoneyMinor::new(8),
-            )
+            .post_dividend(&mut ledger, flow("dividend", 2, 8))
             .unwrap();
         state
-            .post_settlement(
-                &mut ledger,
-                id: scheduled("settlement"),
-                event_seq: 3,
-                cash_delta: MoneyMinor::new(-2),
-            )
+            .post_settlement(&mut ledger, flow("settlement", 3, -2))
             .unwrap();
         assert_eq!(ledger.balance(LedgerAccount::Cash), MoneyMinor::new(3));
         assert_eq!(ledger.balance(LedgerAccount::Borrow), MoneyMinor::new(3));
@@ -694,32 +747,37 @@ mod tests {
 
     #[test]
     fn split_adjusts_working_order_quantity_fills_and_prices() {
-        let order = Order {
-            id: OrderId::from_raw_for_test(9),
-            client_order_id: "split-order".into(),
-            instrument_id: "SYNTH".into(),
-            side: Side::Buy,
-            quantity: QtyAtoms::new(10),
-            filled: QtyAtoms::new(2),
-            kind: OrderKind::StopLimit {
-                stop_price: PriceAtoms::new(110),
-                limit_price: PriceAtoms::new(100),
-            },
-            time_in_force: TimeInForce::Gtc,
-            reduce_only: false,
-            post_only: false,
-            marketable_only: false,
-            submitted_at_event_seq: 1,
-            revision: 0,
-            status: OrderStatus::PartiallyFilled,
-        };
-        let adjusted = split_order(&order, SplitRatio::new(2, 1).unwrap()).unwrap();
+        let mut orders = OrderState::new();
+        let submitted = orders
+            .submit(
+                NewOrder {
+                    client_order_id: "split-order".into(),
+                    instrument_id: "SYNTH".into(),
+                    side: Side::Buy,
+                    quantity: QtyAtoms::new(10),
+                    kind: OrderKind::Limit {
+                        limit_price: PriceAtoms::new(100),
+                    },
+                    time_in_force: TimeInForce::Gtc,
+                    reduce_only: false,
+                    post_only: false,
+                    marketable_only: false,
+                    submitted_at_event_seq: 1,
+                },
+                0,
+                None,
+            )
+            .unwrap();
+        orders
+            .record_fill(submitted.order_id, QtyAtoms::new(2))
+            .unwrap();
+        let order = orders.get(submitted.order_id).unwrap();
+        let adjusted = split_order(order, SplitRatio::new(2, 1).unwrap()).unwrap();
         assert_eq!(adjusted.quantity, QtyAtoms::new(20));
         assert_eq!(adjusted.filled, QtyAtoms::new(4));
         assert_eq!(
             adjusted.kind,
-            OrderKind::StopLimit {
-                stop_price: PriceAtoms::new(55),
+            OrderKind::Limit {
                 limit_price: PriceAtoms::new(50),
             }
         );
