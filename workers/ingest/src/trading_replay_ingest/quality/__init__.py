@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Mapping, Sequence
 
 
 class Severity(IntEnum):
@@ -102,9 +102,11 @@ def _increment_issues(
                 try:
                     atoms = _wire_int(item)
                 except ValueError as error:
-                    issues.append(QualityIssue("INVALID_INTEGER", Severity.QUARANTINED, index, str(error)))
+                    issues.append(
+                        QualityIssue("INVALID_INTEGER", Severity.QUARANTINED, index, str(error))
+                    )
                 else:
-                    if not abs(atoms) % policy.tick_size_atoms == 0:
+                    if abs(atoms) % policy.tick_size_atoms != 0:
                         issues.append(
                             QualityIssue(
                                 "PRICE_INCREMENT",
@@ -117,7 +119,9 @@ def _increment_issues(
                 try:
                     atoms = _wire_int(item)
                 except ValueError as error:
-                    issues.append(QualityIssue("INVALID_INTEGER", Severity.QUARANTINED, index, str(error)))
+                    issues.append(
+                        QualityIssue("INVALID_INTEGER", Severity.QUARANTINED, index, str(error))
+                    )
                 else:
                     if atoms < 0 or atoms % policy.qty_increment_atoms != 0:
                         issues.append(
@@ -140,7 +144,13 @@ def _increment_issues(
 
 
 def _decision_hash(
-    *, status: str, row_count: int, minimum: int | None, maximum: int | None, duplicates: int, issues: Sequence[QualityIssue]
+    *,
+    status: str,
+    row_count: int,
+    minimum: int | None,
+    maximum: int | None,
+    duplicates: int,
+    issues: Sequence[QualityIssue],
 ) -> str:
     document = {
         "duplicates": duplicates,
@@ -158,13 +168,13 @@ def _decision_hash(
         "row_count": row_count,
         "status": status,
     }
-    encoded = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    encoded = json.dumps(
+        document, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
-def validate_events(
-    events: Sequence[Mapping[str, object]], policy: QualityPolicy
-) -> QualityReport:
+def validate_events(events: Sequence[Mapping[str, object]], policy: QualityPolicy) -> QualityReport:
     """Validate canonical events and derive a reproducible immutable status decision."""
     issues: list[QualityIssue] = []
     seen: set[bytes] = set()
@@ -177,23 +187,33 @@ def validate_events(
     book_ready = False
 
     for index, event in enumerate(events):
-        encoded = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        encoded = json.dumps(
+            event, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
         if encoded in seen:
             duplicates += 1
-            issues.append(QualityIssue("DUPLICATE", Severity.DEGRADED, index, "exact duplicate event"))
+            issues.append(
+                QualityIssue("DUPLICATE", Severity.DEGRADED, index, "exact duplicate event")
+            )
         else:
             seen.add(encoded)
 
         try:
             ts = _wire_int(event.get("ts_event_ns"))
         except ValueError as error:
-            issues.append(QualityIssue("INVALID_TIMESTAMP", Severity.QUARANTINED, index, str(error)))
+            issues.append(
+                QualityIssue("INVALID_TIMESTAMP", Severity.QUARANTINED, index, str(error))
+            )
             continue
         minimum = ts if minimum is None else min(minimum, ts)
         maximum = ts if maximum is None else max(maximum, ts)
         if prior_ts is not None:
             if ts < prior_ts:
-                issues.append(QualityIssue("OUT_OF_ORDER", Severity.QUARANTINED, index, "event timestamp regressed"))
+                issues.append(
+                    QualityIssue(
+                        "OUT_OF_ORDER", Severity.QUARANTINED, index, "event timestamp regressed"
+                    )
+                )
             elif ts - prior_ts > policy.max_gap_ns:
                 issues.append(
                     QualityIssue(
@@ -211,20 +231,39 @@ def validate_events(
             try:
                 sequence = _wire_int(raw_sequence)
             except ValueError as error:
-                issues.append(QualityIssue("INVALID_SEQUENCE", Severity.QUARANTINED, index, str(error)))
+                issues.append(
+                    QualityIssue("INVALID_SEQUENCE", Severity.QUARANTINED, index, str(error))
+                )
             else:
                 if prior_sequence is not None and sequence != prior_sequence + 1:
                     kind = event.get("kind")
-                    severity = Severity.QUARANTINED if kind in {"BOOK_DELTA_L2", "BOOK_SNAPSHOT_L2"} else Severity.DEGRADED
-                    code = "BOOK_SEQUENCE_GAP" if severity is Severity.QUARANTINED else "SOURCE_SEQUENCE_GAP"
-                    issues.append(QualityIssue(code, severity, index, f"expected {prior_sequence + 1}, received {sequence}"))
+                    severity = (
+                        Severity.QUARANTINED
+                        if kind in {"BOOK_DELTA_L2", "BOOK_SNAPSHOT_L2"}
+                        else Severity.DEGRADED
+                    )
+                    code = (
+                        "BOOK_SEQUENCE_GAP"
+                        if severity == Severity.QUARANTINED
+                        else "SOURCE_SEQUENCE_GAP"
+                    )
+                    issues.append(
+                        QualityIssue(
+                            code,
+                            severity,
+                            index,
+                            f"expected {prior_sequence + 1}, received {sequence}",
+                        )
+                    )
                 prior_sequence = sequence
 
         kind = event.get("kind")
         try:
             payload = _payload(event)
         except ValueError as error:
-            issues.append(QualityIssue("INVALID_PAYLOAD", Severity.QUARANTINED, index, str(error)))
+            issues.append(
+                QualityIssue("INVALID_PAYLOAD", Severity.QUARANTINED, index, str(error))
+            )
             continue
         issues.extend(_increment_issues(payload, policy, index))
 
@@ -233,13 +272,30 @@ def validate_events(
                 bids = _levels(payload, "bids")
                 asks = _levels(payload, "asks")
             except ValueError as error:
-                issues.append(QualityIssue("INVALID_BOOK", Severity.QUARANTINED, index, str(error)))
+                issues.append(
+                    QualityIssue("INVALID_BOOK", Severity.QUARANTINED, index, str(error))
+                )
             else:
                 book_ready = True
-                if bids and asks and max(price for price, _ in bids) >= min(price for price, _ in asks):
-                    issues.append(QualityIssue("CROSSED_BOOK", Severity.QUARANTINED, index, "snapshot bid crosses ask"))
+                if (
+                    bids
+                    and asks
+                    and max(price for price, _ in bids) >= min(price for price, _ in asks)
+                ):
+                    issues.append(
+                        QualityIssue(
+                            "CROSSED_BOOK", Severity.QUARANTINED, index, "snapshot bid crosses ask"
+                        )
+                    )
         elif kind == "BOOK_DELTA_L2" and not book_ready:
-            issues.append(QualityIssue("DELTA_WITHOUT_SNAPSHOT", Severity.QUARANTINED, index, "L2 delta cannot be reconstructed"))
+            issues.append(
+                QualityIssue(
+                    "DELTA_WITHOUT_SNAPSHOT",
+                    Severity.QUARANTINED,
+                    index,
+                    "L2 delta cannot be reconstructed",
+                )
+            )
         elif kind == "BBO":
             bid = payload.get("bid_price_atoms")
             ask = payload.get("ask_price_atoms")
@@ -247,16 +303,35 @@ def validate_events(
                 try:
                     crossed = _wire_int(bid) >= _wire_int(ask)
                 except ValueError as error:
-                    issues.append(QualityIssue("INVALID_BBO", Severity.QUARANTINED, index, str(error)))
+                    issues.append(
+                        QualityIssue("INVALID_BBO", Severity.QUARANTINED, index, str(error))
+                    )
                 else:
                     if crossed:
-                        issues.append(QualityIssue("CROSSED_BBO", Severity.DEGRADED, index, "bid is not below ask"))
+                        issues.append(
+                            QualityIssue(
+                                "CROSSED_BBO", Severity.DEGRADED, index, "bid is not below ask"
+                            )
+                        )
             if prior_quote_ts is not None and ts - prior_quote_ts > policy.max_quote_staleness_ns:
-                issues.append(QualityIssue("STALE_QUOTE_INTERVAL", Severity.DEGRADED, index, "BBO update interval exceeded threshold"))
+                issues.append(
+                    QualityIssue(
+                        "STALE_QUOTE_INTERVAL",
+                        Severity.DEGRADED,
+                        index,
+                        "BBO update interval exceeded threshold",
+                    )
+                )
             prior_quote_ts = ts
 
     highest = max((issue.severity for issue in issues), default=Severity.INFO)
-    status = "QUARANTINED" if highest is Severity.QUARANTINED else "DEGRADED" if highest is Severity.DEGRADED else "VALID"
+    status = (
+        "QUARANTINED"
+        if highest == Severity.QUARANTINED
+        else "DEGRADED"
+        if highest == Severity.DEGRADED
+        else "VALID"
+    )
     immutable_issues = tuple(issues)
     return QualityReport(
         status=status,
