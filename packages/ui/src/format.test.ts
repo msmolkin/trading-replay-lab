@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatFixedPoint, formatSessionTime, formatSignedPpb } from "./format";
+import { formatFixedPoint, formatSessionTime, formatSignedPpb } from "./format.ts";
 
 test("fixed-point formatting never converts bigint through Number", () => {
   assert.equal(formatFixedPoint(9_007_199_254_740_993n, 2), "90071992547409.93");
