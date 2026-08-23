@@ -3,3 +3,6 @@ packages:
   - "packages/contracts"
 
 minimumReleaseAge: 1440
+
+onlyBuiltDependencies:
+  - sharp
