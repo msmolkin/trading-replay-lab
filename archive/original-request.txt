@@ -1,0 +1,8 @@
+I'd like to build a game. Your goal is to design the spec so I can have tons of agents code it. The point of the game is to see whether I could actually win at trading. I should have the ability to increase or decrease leverage, buy long/sell/sell short/cover/reverse/closing order only/taker only/maker only/sell more than I currently have (effectively reversing partial) at the bid/ask/midpoint/market/stop loss. leverage can go up or down from 1x to 50x.
+it should be able to use real historical data and be played at any time in history (within the data that exists). if order flow data exists, it should pull that data.
+
+we are playing with crypto, ideally as well as futures and stocks, although those might not have free data available. tons of adapters exist, so we might be able to adapt some of those. there should be different granularities and the ability to lock some granularities so I can't see them (e.g. if I am planning to see whether I could have made money over the last two weeks, I can lock it so I can only see the weekly or monthly chart when choosing a starting point (or select the actual date and time) so I don't know the path, so ergodicity might destroy me if I have a path-dependent option and play it wrong even if I would have been safe had I seen the real path because I would have avoided the issues.
+
+you should save this text that I gave as well in the archive, although no agents will read it.
+
+you should also include an AGENTS.md file in the directory + repository, with all relevant info, since some agents won't have access to my global agents.md/claude.md/gemini.md files as they run in the cloud. oh, and don't forget to generate the repository and make it public, so I can have an agent find the repo and work on it for free

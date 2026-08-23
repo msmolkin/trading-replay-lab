@@ -1,0 +1,44 @@
+name: Agent implementation task
+description: Claim one implementation unit from tasks/README.md
+title: "[TASK-ID] "
+labels: ["agent-ready"]
+body:
+  - type: input
+    id: task
+    attributes:
+      label: Task ID
+      placeholder: M0-01
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependency evidence
+      description: Link merged dependencies or explain why none are required.
+    validations:
+      required: true
+  - type: textarea
+    id: paths
+    attributes:
+      label: Paths claimed
+      description: List every path this work expects to modify.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance plan
+      description: Map deliverables and tests to the task acceptance checks.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Coordination
+      options:
+        - label: I read AGENTS.md and the relevant specifications.
+          required: true
+        - label: No active task owns these paths.
+          required: true
+        - label: I will not commit market data or credentials.
+          required: true

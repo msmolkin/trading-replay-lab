@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/order-command.schema.json",
+  "title": "OrderCommand",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "command_id", "session_id", "instrument_id", "side", "quantity_atoms", "order_type", "time_in_force", "reduce_only", "post_only", "marketable_only", "client_idempotency_key"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "command_id": { "type": "string", "format": "uuid" },
+    "session_id": { "type": "string", "format": "uuid" },
+    "instrument_id": { "type": "string", "minLength": 1 },
+    "side": { "enum": ["BUY", "SELL"] },
+    "quantity_atoms": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "order_type": { "enum": ["MARKET", "LIMIT", "STOP_MARKET", "STOP_LIMIT"] },
+    "limit_price_atoms": { "type": "string", "pattern": "^-?[0-9]+$" },
+    "stop_price_atoms": { "type": "string", "pattern": "^-?[0-9]+$" },
+    "time_in_force": { "enum": ["GTC", "IOC", "FOK"] },
+    "reduce_only": { "type": "boolean" },
+    "post_only": { "type": "boolean" },
+    "marketable_only": { "type": "boolean" },
+    "slippage_cap_bps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+    "submitted_at_event_seq": { "type": "string", "pattern": "^[0-9]+$" },
+    "client_idempotency_key": { "type": "string", "minLength": 8, "maxLength": 128 }
+  },
+  "allOf": [
+    { "if": { "properties": { "order_type": { "enum": ["LIMIT", "STOP_LIMIT"] } } }, "then": { "required": ["limit_price_atoms"] } },
+    { "if": { "properties": { "order_type": { "enum": ["STOP_MARKET", "STOP_LIMIT"] } } }, "then": { "required": ["stop_price_atoms"] } },
+    { "not": { "required": ["post_only", "marketable_only"], "properties": { "post_only": { "const": true }, "marketable_only": { "const": true } } } }
+  ]
+}
