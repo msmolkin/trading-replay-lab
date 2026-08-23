@@ -281,10 +281,10 @@ impl RiskState {
 
 /// Computes a full marked isolated-margin snapshot.
 ///
-/// Working-order reservation is based on the maximum absolute exposure reachable if all
-/// non-reduce-only live buy orders or all non-reduce-only live sell orders execute. Existing
-/// position closing capacity is credited at most once, avoiding the common two-close-order
-/// under-reservation bug while remaining conservative when both sides are working.
+/// Working-order reservation is based on the maximum additional directional exposure reachable
+/// if all non-reduce-only live buy orders or all non-reduce-only live sell orders execute. The
+/// current position can offset closing quantity at most once in each direction; any remaining
+/// same-side quantity is reopening/expansion risk and must reserve margin.
 ///
 /// # Errors
 /// Returns validation or checked-arithmetic errors.
@@ -514,16 +514,12 @@ fn working_order_expansion_atoms(
         }
     }
 
-    let base = i128::from(position_atoms);
-    let buys = i128::try_from(buys).map_err(|_| NumericError::Overflow)?;
-    let sells = i128::try_from(sells).map_err(|_| NumericError::Overflow)?;
-    let long_extreme = base.checked_add(buys).ok_or(NumericError::Overflow)?;
-    let short_extreme = base.checked_sub(sells).ok_or(NumericError::Overflow)?;
-    let base_abs = base.abs();
-    let max_abs = base_abs.max(long_extreme.abs()).max(short_extreme.abs());
-    let expansion = max_abs
-        .checked_sub(base_abs)
-        .ok_or(NumericError::Overflow)?;
+    let close_capacity = u128::from(position_atoms.unsigned_abs());
+    let buy_close_capacity = if position_atoms < 0 { close_capacity } else { 0 };
+    let sell_close_capacity = if position_atoms > 0 { close_capacity } else { 0 };
+    let buy_expansion = buys.saturating_sub(buy_close_capacity);
+    let sell_expansion = sells.saturating_sub(sell_close_capacity);
+    let expansion = buy_expansion.max(sell_expansion);
     u64::try_from(expansion).map_err(|_| NumericError::Overflow.into())
 }
 
@@ -713,6 +709,24 @@ mod tests {
         .unwrap();
         assert_eq!(snapshot.position_initial_margin, MoneyMinor::new(250));
         assert_eq!(snapshot.working_order_margin, MoneyMinor::new(250));
+    }
+
+    #[test]
+    fn opposite_direction_working_orders_reserve_the_larger_expansion() {
+        let mut orders = OrderState::new();
+        submit_order(&mut orders, "buy", Side::Buy, 9, false, -5);
+        submit_order(&mut orders, "sell", Side::Sell, 7, false, -5);
+        let snapshot = margin_snapshot(
+            MoneyMinor::new(10_000),
+            position(-5),
+            "SYNTH",
+            &orders,
+            PriceAtoms::new(100),
+            leverage(2),
+            profile(),
+        )
+        .unwrap();
+        assert_eq!(snapshot.working_order_margin, MoneyMinor::new(350));
     }
 
     #[test]
