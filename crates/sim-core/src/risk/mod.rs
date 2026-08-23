@@ -74,7 +74,9 @@ pub struct MarginSnapshot {
 
 impl MarginSnapshot {
     /// Total initial requirement before a new expansion.
-    #[must_use]
+    ///
+    /// # Errors
+    /// Returns [`RiskError::Numeric`] if checked margin addition overflows.
     pub fn total_initial_requirement(self) -> Result<MoneyMinor, RiskError> {
         checked_money_add(self.position_initial_margin, self.working_order_margin)
     }
