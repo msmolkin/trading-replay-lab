@@ -28,7 +28,13 @@ def store(tmp_path: Path) -> EventStore:
     return result
 
 
-def command(*, command_id: str = "cmd-1", key: str = "idem-1", version: int = 0, payload_hash: str = "a" * 64) -> CommandRecord:
+def command(
+    *,
+    command_id: str = "cmd-1",
+    key: str = "idem-1",
+    version: int = 0,
+    payload_hash: str = "a" * 64,
+) -> CommandRecord:
     return CommandRecord(
         command_id=command_id,
         session_id="session-1",
