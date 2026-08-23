@@ -93,6 +93,7 @@ def setup(
 
 
 def service(tmp_path: Path, *, catalog: CoverageCatalog | None = None) -> SessionService:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'sessions.db'}")
     result = SessionService(engine, catalog or CoverageCatalog((manifest(),)))
     result.create_schema()
@@ -256,9 +257,10 @@ def test_invalid_advance_and_early_completion_are_atomic(tmp_path: Path) -> None
                 logical_time_ns=target,
             )
         assert invalid.value.code == SessionErrorCode.ADVANCE_OUT_OF_RANGE
-        assert api.get_session(
-            session_id="session-1", principal_id="principal-1"
-        ).version == running.version
+        assert (
+            api.get_session(session_id="session-1", principal_id="principal-1").version
+            == running.version
+        )
 
 
 def test_stale_version_and_cross_principal_access_fail_closed(tmp_path: Path) -> None:
@@ -273,16 +275,19 @@ def test_stale_version_and_cross_principal_access_fail_closed(tmp_path: Path) ->
     with pytest.raises(SessionLifecycleError) as stale:
         api.start(session_id="session-1", principal_id="principal-1", expected_version=0)
     assert stale.value.code == SessionErrorCode.VERSION_CONFLICT
-    assert api.get_session(
-        session_id="session-1", principal_id="principal-1"
-    ).version == committed.version
+    assert (
+        api.get_session(session_id="session-1", principal_id="principal-1").version
+        == committed.version
+    )
 
     with pytest.raises(SessionLifecycleError) as isolated:
         api.get_session(session_id="session-1", principal_id="principal-2")
     assert isolated.value.code == SessionErrorCode.PRINCIPAL_MISMATCH
 
 
-def test_fork_copies_immutable_pins_at_exact_frontier_without_mutating_parent(tmp_path: Path) -> None:
+def test_fork_copies_immutable_pins_at_exact_frontier_without_mutating_parent(
+    tmp_path: Path,
+) -> None:
     api = service(tmp_path)
     created(api)
     parent = api.commit(
@@ -314,13 +319,12 @@ def test_fork_copies_immutable_pins_at_exact_frontier_without_mutating_parent(tm
     assert child.logical_time_ns == 325
     assert child.setup == parent.setup
     assert child.parent_session_id == "session-1"
-    assert api.get_session(
-        session_id="session-1", principal_id="principal-1"
-    ).version == parent.version
-
-    resumed = api.start(
-        session_id="session-2", principal_id="principal-1", expected_version=1
+    assert (
+        api.get_session(session_id="session-1", principal_id="principal-1").version
+        == parent.version
     )
+
+    resumed = api.start(session_id="session-2", principal_id="principal-1", expected_version=1)
     assert resumed.status == SessionStatus.RUNNING
 
 
@@ -343,14 +347,42 @@ def test_ruleset_id_is_immutable_across_sessions(tmp_path: Path) -> None:
             setup=setup(rules=changed),
         )
     assert conflict.value.code == SessionErrorCode.RULESET_CONFLICT
-    assert api.get_session(
-        session_id="session-2", principal_id="principal-1"
-    ).status == SessionStatus.SETUP
+    assert (
+        api.get_session(session_id="session-2", principal_id="principal-1").status
+        == SessionStatus.SETUP
+    )
 
 
 def test_ruleset_rejects_binary_float_values() -> None:
     with pytest.raises(ValueError, match="floating-point"):
         ruleset(body={"fee_rate": 0.001})
+
+
+def test_invalid_integer_inputs_use_stable_error_code(tmp_path: Path) -> None:
+    api = service(tmp_path)
+    with pytest.raises(SessionLifecycleError) as created_invalid:
+        api.create_session(
+            session_id="session-1",
+            principal_id="principal-1",
+            created_at_ns=True,  # type: ignore[arg-type]
+        )
+    assert created_invalid.value.code == SessionErrorCode.INVALID_VALUE
+
+    created(api)
+    committed = api.commit(
+        session_id="session-1",
+        principal_id="principal-1",
+        expected_version=0,
+        setup=setup(),
+    )
+    with pytest.raises(SessionLifecycleError) as version_invalid:
+        api.start(
+            session_id="session-1",
+            principal_id="principal-1",
+            expected_version=-1,
+        )
+    assert version_invalid.value.code == SessionErrorCode.INVALID_VALUE
+    assert committed.version == 1
 
 
 def test_lifecycle_events_form_a_persisted_hash_chain(tmp_path: Path) -> None:
@@ -362,9 +394,7 @@ def test_lifecycle_events_form_a_persisted_hash_chain(tmp_path: Path) -> None:
         expected_version=0,
         setup=setup(),
     )
-    api.start(
-        session_id="session-1", principal_id="principal-1", expected_version=record.version
-    )
+    api.start(session_id="session-1", principal_id="principal-1", expected_version=record.version)
 
     with api.engine.connect() as connection:
         rows = connection.execute(
