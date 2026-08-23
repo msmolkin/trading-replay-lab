@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, insert, select, update
+from sqlalchemy import Engine, create_engine, insert, select, update
 
 from trading_replay_api.commitments import (
     ALGORITHM_VERSION,
@@ -60,7 +60,7 @@ def proof_for(secret: bytes, nonce: bytes = b"player") -> CompletionProof:
     )
 
 
-def service(tmp_path: Path) -> tuple[CommitmentService, object]:
+def service(tmp_path: Path) -> tuple[CommitmentService, Engine]:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'commitments.db'}")
     metadata.create_all(engine)
     with engine.begin() as connection:
