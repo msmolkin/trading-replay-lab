@@ -1,3 +1,5 @@
+# ruff: noqa: I001  # Ruff 0.16.2 misclassifies this otherwise stable import block.
+
 """Deterministic Binance Public Data archive adapter.
 
 The official archive publishes immutable-looking date-addressed ZIP objects plus sibling
@@ -82,7 +84,7 @@ class UrlLibTransport:
 
     def get(self, url: str, max_bytes: int) -> bytes:
         request = Request(url, headers={"User-Agent": "trading-replay-lab/1"})
-        with urlopen(request, timeout=self.timeout_seconds) as response:  # noqa: S310
+        with urlopen(request, timeout=self.timeout_seconds) as response:
             payload = response.read(max_bytes + 1)
         if len(payload) > max_bytes:
             raise BinanceIntegrityError("provider object exceeds configured byte ceiling")
