@@ -2,6 +2,7 @@
 
 //! Deterministic simulator core. Domain modules use checked integer fixed-point arithmetic.
 
+pub mod economics;
 pub mod hash;
 pub mod instrument;
 pub mod kernel;
