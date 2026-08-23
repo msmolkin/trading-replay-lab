@@ -200,10 +200,10 @@ impl InstrumentDefinition {
         }
         let price_unsigned =
             u64::try_from(price_value).map_err(|_| InstrumentError::InvalidPrice)?;
-        if price_unsigned % self.tick_size_atoms != 0 {
+        if !price_unsigned.is_multiple_of(self.tick_size_atoms) {
             return Err(InstrumentError::InvalidPrice);
         }
-        if qty.get() == 0 || qty.get() % self.qty_increment_atoms != 0 {
+        if qty.get() == 0 || !qty.get().is_multiple_of(self.qty_increment_atoms) {
             return Err(InstrumentError::InvalidQuantity);
         }
         Ok(())
