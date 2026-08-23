@@ -180,7 +180,10 @@ impl Order {
     /// Returns whether execution may currently consume this order.
     #[must_use]
     pub const fn is_executable(&self) -> bool {
-        matches!(self.status, OrderStatus::Working | OrderStatus::PartiallyFilled)
+        matches!(
+            self.status,
+            OrderStatus::Working | OrderStatus::PartiallyFilled
+        )
     }
 }
 
@@ -421,7 +424,11 @@ impl OrderState {
         position_atoms: i64,
         quote: Option<TopOfBook>,
     ) -> Result<QtyAtoms, OrderError> {
-        let existing = self.orders.get(&id).ok_or(OrderError::UnknownOrder)?.clone();
+        let existing = self
+            .orders
+            .get(&id)
+            .ok_or(OrderError::UnknownOrder)?
+            .clone();
         if existing.status.is_terminal() {
             return Err(OrderError::InvalidState);
         }
@@ -466,7 +473,10 @@ impl OrderState {
             .checked_add(1)
             .ok_or(OrderError::CounterOverflow)?;
 
-        let order = self.orders.get_mut(&id).expect("order existence checked above");
+        let order = self
+            .orders
+            .get_mut(&id)
+            .expect("order existence checked above");
         order.quantity = accepted_total;
         order.kind = replacement.kind;
         order.revision = next_revision;
@@ -574,7 +584,11 @@ impl OrderState {
         if trigger_price.get() <= 0 {
             return Err(OrderError::InvalidPrice);
         }
-        let existing = self.orders.get(&id).ok_or(OrderError::UnknownOrder)?.clone();
+        let existing = self
+            .orders
+            .get(&id)
+            .ok_or(OrderError::UnknownOrder)?
+            .clone();
         if existing.status != OrderStatus::Dormant {
             return Err(OrderError::InvalidState);
         }
@@ -603,12 +617,18 @@ impl OrderState {
         )
         .is_err()
         {
-            let order = self.orders.get_mut(&id).expect("order existence checked above");
+            let order = self
+                .orders
+                .get_mut(&id)
+                .expect("order existence checked above");
             order.status = OrderStatus::Rejected;
             return Ok(TriggerOutcome::Rejected);
         }
 
-        let order = self.orders.get_mut(&id).expect("order existence checked above");
+        let order = self
+            .orders
+            .get_mut(&id)
+            .expect("order existence checked above");
         order.kind = converted;
         order.status = if order.filled.get() == 0 {
             OrderStatus::Working
