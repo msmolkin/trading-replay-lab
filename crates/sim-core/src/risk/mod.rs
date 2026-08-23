@@ -240,11 +240,7 @@ impl RiskState {
     ///
     /// Returns `true` only for the transition from healthy to triggered. Flat positions do
     /// not liquidate even when account equity is non-positive.
-    pub fn evaluate_liquidation(
-        &mut self,
-        position: Position,
-        snapshot: MarginSnapshot,
-    ) -> bool {
+    pub fn evaluate_liquidation(&mut self, position: Position, snapshot: MarginSnapshot) -> bool {
         if self.liquidation != LiquidationState::Healthy || position.quantity_atoms == 0 {
             return false;
         }
