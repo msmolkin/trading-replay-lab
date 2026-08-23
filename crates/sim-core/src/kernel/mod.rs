@@ -57,7 +57,7 @@ pub struct KernelEvent {
 }
 
 /// Minimal snapshot hook needed by later full simulator snapshots.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct KernelSnapshot {
     /// Next required input sequence.
     pub next_input_seq: u64,
