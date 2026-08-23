@@ -129,7 +129,11 @@ export interface ReplaceOrderCommand {
   order_id: string;
   replacement: OrderCommand;
 }
-export type CommandPayload = OrderCommand | SetLeverageCommand | CancelOrderCommand | ReplaceOrderCommand;
+export type CommandPayload =
+  | OrderCommand
+  | SetLeverageCommand
+  | CancelOrderCommand
+  | ReplaceOrderCommand;
 
 export interface CommandEnvelope {
   schema_version: "1.0.0";
