@@ -85,7 +85,9 @@ pub enum LedgerError {
 impl core::fmt::Display for LedgerError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::TooFewPostings => formatter.write_str("ledger transaction needs at least two postings"),
+            Self::TooFewPostings => {
+                formatter.write_str("ledger transaction needs at least two postings")
+            }
             Self::EmptyKind => formatter.write_str("ledger transaction kind cannot be empty"),
             Self::Unbalanced => formatter.write_str("ledger transaction is not balanced"),
             Self::Overflow => formatter.write_str("ledger arithmetic overflow"),
@@ -136,7 +138,9 @@ impl Ledger {
             if balances.insert(account, balance).is_some() {
                 return Err(LedgerError::InvalidSnapshot);
             }
-            aggregate = aggregate.checked_add(balance.get()).ok_or(LedgerError::Overflow)?;
+            aggregate = aggregate
+                .checked_add(balance.get())
+                .ok_or(LedgerError::Overflow)?;
         }
         if aggregate != 0 {
             return Err(LedgerError::InvalidSnapshot);
@@ -167,7 +171,11 @@ impl Ledger {
     pub fn snapshot(&self) -> LedgerSnapshot {
         LedgerSnapshot {
             next_transaction_id: self.next_transaction_id,
-            balances: self.balances.iter().map(|(account, balance)| (*account, *balance)).collect(),
+            balances: self
+                .balances
+                .iter()
+                .map(|(account, balance)| (*account, *balance))
+                .collect(),
         }
     }
 
