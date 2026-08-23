@@ -714,8 +714,9 @@ impl OrderState {
         excluding: Option<OrderId>,
     ) -> Result<QtyAtoms, OrderError> {
         let reducible = match (position_atoms.cmp(&0), side) {
-            (core::cmp::Ordering::Greater, Side::Sell)
-            | (core::cmp::Ordering::Less, Side::Buy) => position_atoms.unsigned_abs(),
+            (core::cmp::Ordering::Greater, Side::Sell) | (core::cmp::Ordering::Less, Side::Buy) => {
+                position_atoms.unsigned_abs()
+            }
             _ => return Err(OrderError::ReduceOnlyWrongSide),
         };
         let reserved = self
