@@ -1,7 +1,11 @@
 export type SessionMode = "HISTORICAL" | "RANDOM";
 export type ExecutionTier = "F0" | "F0T" | "F1" | "F2" | "F3";
 export type VisibilityMode = "ABSOLUTE" | "RELATIVE" | "HIDDEN_CALENDAR";
-export type RedistributionClass = "REDISTRIBUTABLE" | "USER_LICENSED" | "RESTRICTED" | "UNKNOWN";
+export type RedistributionClass =
+  | "REDISTRIBUTABLE"
+  | "USER_LICENSED"
+  | "RESTRICTED"
+  | "UNKNOWN";
 export type DataCapability =
   | "BARS"
   | "TRADES"
