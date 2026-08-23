@@ -51,10 +51,7 @@
       "title": "InstrumentDefinition"
     },
     {
-      "defs": [
-        "DataCapabilities",
-        "Gap"
-      ],
+      "defs": ["DataCapabilities", "Gap"],
       "file": "manifest.schema.json",
       "git_blob_sha1": "926fe4e3a8dd98cbb181748c5f8a605dbe385d8a",
       "id": "https://trading-replay-lab.dev/schemas/v1/manifest.schema.json",
@@ -85,10 +82,7 @@
       "title": "OrderCommand"
     },
     {
-      "defs": [
-        "ResultMetrics",
-        "StateHash"
-      ],
+      "defs": ["ResultMetrics", "StateHash"],
       "file": "result-bundle.schema.json",
       "git_blob_sha1": "f619ee0287c25e722e979da0657b9758c5a9e686",
       "id": "https://trading-replay-lab.dev/schemas/v1/result-bundle.schema.json",
