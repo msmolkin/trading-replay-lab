@@ -147,10 +147,13 @@ impl Position {
         if price.get() <= 0 {
             return Err(PositionError::InvalidPrice);
         }
-        let fill_abs = i64::try_from(quantity.get()).map_err(|_| PositionError::QuantityOverflow)?;
+        let fill_abs =
+            i64::try_from(quantity.get()).map_err(|_| PositionError::QuantityOverflow)?;
         let signed_fill = match side {
             FillSide::Buy => fill_abs,
-            FillSide::Sell => fill_abs.checked_neg().ok_or(PositionError::QuantityOverflow)?,
+            FillSide::Sell => fill_abs
+                .checked_neg()
+                .ok_or(PositionError::QuantityOverflow)?,
         };
 
         let mut next = *self;
@@ -186,7 +189,8 @@ impl Position {
             } else {
                 weighted_average(
                     old_abs,
-                    self.average_entry_price.ok_or(PositionError::InvalidState)?,
+                    self.average_entry_price
+                        .ok_or(PositionError::InvalidState)?,
                     quantity.get(),
                     price,
                 )?
@@ -204,7 +208,9 @@ impl Position {
         let old_abs = old_qty.unsigned_abs();
         let close_abs = old_abs.min(quantity.get());
         let close_qty = QtyAtoms::new(close_abs);
-        let basis = self.average_entry_price.ok_or(PositionError::InvalidState)?;
+        let basis = self
+            .average_entry_price
+            .ok_or(PositionError::InvalidState)?;
         let realized = realized_close_pnl(close_qty, basis, price, old_qty.is_positive(), math)?;
         self.realized_pnl = self.realized_pnl.checked_add(realized)?;
 
@@ -436,12 +442,7 @@ mod tests {
         let mut position = Position::flat();
         let before = position;
         assert_eq!(
-            position.apply_fill(
-                FillSide::Buy,
-                QtyAtoms::new(1),
-                PriceAtoms::new(0),
-                math(),
-            ),
+            position.apply_fill(FillSide::Buy, QtyAtoms::new(1), PriceAtoms::new(0), math(),),
             Err(PositionError::InvalidPrice)
         );
         assert_eq!(position, before);
@@ -454,6 +455,9 @@ mod tests {
             average_entry_price: Some(PriceAtoms::new(100)),
             realized_pnl: MoneyMinor::new(0),
         };
-        assert_eq!(Position::from_snapshot(invalid), Err(PositionError::InvalidState));
+        assert_eq!(
+            Position::from_snapshot(invalid),
+            Err(PositionError::InvalidState)
+        );
     }
 }
