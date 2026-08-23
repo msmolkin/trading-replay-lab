@@ -29,11 +29,7 @@ export type SetupFormProps = {
 
 const EXECUTION_TIERS: readonly ExecutionTier[] = ["F0", "F0T", "F1", "F2", "F3"];
 const CHART_INTERVALS: readonly ChartInterval[] = ["1m", "5m", "15m", "1h", "1d"];
-const VISIBILITY_MODES: readonly VisibilityMode[] = [
-  "ABSOLUTE",
-  "RELATIVE",
-  "HIDDEN_CALENDAR",
-];
+const VISIBILITY_MODES: readonly VisibilityMode[] = ["ABSOLUTE", "RELATIVE", "HIDDEN_CALENDAR"];
 const SESSION_MODES: readonly SessionMode[] = ["HISTORICAL", "RANDOM"];
 
 export function SetupForm({ state, onPatch, onPreflight, onCommit }: SetupFormProps) {
@@ -70,12 +66,8 @@ export function SetupForm({ state, onPatch, onPreflight, onCommit }: SetupFormPr
         "fieldset",
         { disabled, className: "trl-setup__group" },
         createElement("legend", null, "Episode"),
-        selectField(
-          "setup-mode",
-          "Mode",
-          state.draft.mode,
-          SESSION_MODES,
-          (value) => onPatch({ mode: value as SessionMode }),
+        selectField("setup-mode", "Mode", state.draft.mode, SESSION_MODES, (value) =>
+          onPatch({ mode: value as SessionMode }),
         ),
         textField("setup-universe", "Universe", state.draft.universe, errors.universe, (value) =>
           onPatch({ universe: value }),
@@ -179,12 +171,8 @@ export function SetupForm({ state, onPatch, onPreflight, onCommit }: SetupFormPr
         "fieldset",
         { disabled, className: "trl-setup__group" },
         createElement("legend", null, "Rules and information"),
-        textField(
-          "setup-ruleset-id",
-          "Ruleset",
-          state.draft.rulesetId,
-          errors.rulesetId,
-          (value) => onPatch({ rulesetId: value }),
+        textField("setup-ruleset-id", "Ruleset", state.draft.rulesetId, errors.rulesetId, (value) =>
+          onPatch({ rulesetId: value }),
         ),
         textField(
           "setup-ruleset-version",
@@ -297,11 +285,7 @@ function preflightNode(state: SetupState): ReactNode {
     return createElement("p", { role: "status", "aria-live": "polite" }, "Checking eligibility…");
   }
   if (state.preflight.status === "ERROR") {
-    return createElement(
-      "p",
-      { role: "alert" },
-      `Preflight failed: ${state.preflight.message}`,
-    );
+    return createElement("p", { role: "alert" }, `Preflight failed: ${state.preflight.message}`);
   }
 
   const report = state.preflight.report;
