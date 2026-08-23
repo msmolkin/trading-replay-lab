@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping, Protocol
+from typing import Protocol
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +25,10 @@ class AuthenticationError(PermissionError):
 
 
 class Authenticator(Protocol):
-    """Hosted authentication interface; transport-specific verification stays outside domain code."""
+    """Hosted authentication boundary.
+
+    Transport-specific identity verification stays outside domain code.
+    """
 
     def authenticate(self, headers: Mapping[str, str]) -> Principal:
         """Validate request identity and return a principal."""
