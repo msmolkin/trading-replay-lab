@@ -180,7 +180,9 @@ impl core::fmt::Display for EconomicsError {
             Self::InvalidSplit => formatter.write_str("split ratio cannot be represented exactly"),
             Self::Numeric(error) => write!(formatter, "economics arithmetic failed: {error}"),
             Self::Ledger(error) => write!(formatter, "economics ledger posting failed: {error}"),
-            Self::Position(error) => write!(formatter, "economics position adjustment failed: {error}"),
+            Self::Position(error) => {
+                write!(formatter, "economics position adjustment failed: {error}")
+            }
         }
     }
 }
@@ -248,10 +250,7 @@ impl EconomicsState {
             input.math.settlement_scale,
             input.math.rounding,
         )?;
-        let absolute_notional = notional
-            .get()
-            .checked_abs()
-            .ok_or(NumericError::Overflow)?;
+        let absolute_notional = notional.get().checked_abs().ok_or(NumericError::Overflow)?;
         let fee = apply_rate_ppb(
             MoneyMinor::new(absolute_notional),
             input.rate,
@@ -276,12 +275,7 @@ impl EconomicsState {
         ledger: &mut Ledger,
         flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
-        self.post_scheduled_cash_flow(
-            ledger,
-            flow,
-            "FUNDING",
-            LedgerAccount::Funding,
-        )
+        self.post_scheduled_cash_flow(ledger, flow, "FUNDING", LedgerAccount::Funding)
     }
 
     /// Posts one non-negative borrow charge exactly once.
@@ -325,12 +319,7 @@ impl EconomicsState {
         ledger: &mut Ledger,
         flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
-        self.post_scheduled_cash_flow(
-            ledger,
-            flow,
-            "DIVIDEND",
-            LedgerAccount::Dividends,
-        )
+        self.post_scheduled_cash_flow(ledger, flow, "DIVIDEND", LedgerAccount::Dividends)
     }
 
     /// Posts one signed futures/expiry settlement adjustment exactly once.
@@ -342,12 +331,7 @@ impl EconomicsState {
         ledger: &mut Ledger,
         flow: ScheduledCashFlow,
     ) -> Result<bool, EconomicsError> {
-        self.post_scheduled_cash_flow(
-            ledger,
-            flow,
-            "SETTLEMENT",
-            LedgerAccount::Settlement,
-        )
+        self.post_scheduled_cash_flow(ledger, flow, "SETTLEMENT", LedgerAccount::Settlement)
     }
 
     fn post_scheduled_cash_flow(
@@ -369,13 +353,7 @@ impl EconomicsState {
             }
             return Err(EconomicsError::ScheduledConflict);
         }
-        post_cash_flow(
-            ledger,
-            flow.event_seq,
-            kind,
-            account,
-            flow.cash_delta,
-        )?;
+        post_cash_flow(ledger, flow.event_seq, kind, account, flow.cash_delta)?;
         self.posted_scheduled.insert(flow.id, fingerprint);
         Ok(true)
     }
@@ -429,7 +407,10 @@ pub fn split_position(position: Position, ratio: SplitRatio) -> Result<Position,
 ///
 /// # Errors
 /// Returns [`EconomicsError::InvalidSplit`] for non-integral atom transforms.
-pub fn split_order(order: &Order, ratio: SplitRatio) -> Result<SplitOrderAdjustment, EconomicsError> {
+pub fn split_order(
+    order: &Order,
+    ratio: SplitRatio,
+) -> Result<SplitOrderAdjustment, EconomicsError> {
     let quantity = scale_unsigned_exact(order.quantity.get(), ratio.numerator, ratio.denominator)?;
     let filled = scale_unsigned_exact(order.filled.get(), ratio.numerator, ratio.denominator)?;
     let kind = match order.kind {
@@ -499,11 +480,7 @@ fn post_cash_flow(
     Ok(())
 }
 
-fn scale_signed_exact(
-    value: i64,
-    numerator: u64,
-    denominator: u64,
-) -> Result<i64, EconomicsError> {
+fn scale_signed_exact(value: i64, numerator: u64, denominator: u64) -> Result<i64, EconomicsError> {
     let product = i128::from(value)
         .checked_mul(i128::from(numerator))
         .ok_or(NumericError::Overflow)?;
@@ -544,11 +521,7 @@ fn scale_price_exact(
     Ok(PriceAtoms::new(value))
 }
 
-fn div_round(
-    numerator: i128,
-    denominator: i128,
-    rounding: Rounding,
-) -> Result<i128, NumericError> {
+fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i128, NumericError> {
     let quotient = numerator / denominator;
     let remainder = numerator % denominator;
     if remainder == 0 {
@@ -655,12 +628,7 @@ mod tests {
             MoneyMinor::new(1)
         );
         assert_eq!(
-            apply_rate_ppb(
-                amount,
-                RatePpb::new(-500_000_000),
-                Rounding::Floor,
-            )
-            .unwrap(),
+            apply_rate_ppb(amount, RatePpb::new(-500_000_000), Rounding::Floor,).unwrap(),
             MoneyMinor::new(-1)
         );
     }
@@ -669,8 +637,16 @@ mod tests {
     fn scheduled_payments_are_idempotent_and_conflict_safe() {
         let mut state = EconomicsState::new();
         let mut ledger = Ledger::new();
-        assert!(state.post_funding(&mut ledger, flow("funding-1", 5, -7)).unwrap());
-        assert!(!state.post_funding(&mut ledger, flow("funding-1", 5, -7)).unwrap());
+        assert!(
+            state
+                .post_funding(&mut ledger, flow("funding-1", 5, -7))
+                .unwrap()
+        );
+        assert!(
+            !state
+                .post_funding(&mut ledger, flow("funding-1", 5, -7))
+                .unwrap()
+        );
         assert_eq!(
             state.post_funding(&mut ledger, flow("funding-1", 5, -8)),
             Err(EconomicsError::ScheduledConflict)
@@ -692,16 +668,18 @@ mod tests {
         })
         .unwrap();
         let id = scheduled("overflow");
-        assert!(state
-            .post_funding(
-                &mut ledger,
-                ScheduledCashFlow {
-                    id: id.clone(),
-                    event_seq: 1,
-                    cash_delta: MoneyMinor::new(1),
-                },
-            )
-            .is_err());
+        assert!(
+            state
+                .post_funding(
+                    &mut ledger,
+                    ScheduledCashFlow {
+                        id: id.clone(),
+                        event_seq: 1,
+                        cash_delta: MoneyMinor::new(1),
+                    },
+                )
+                .is_err()
+        );
         assert!(!state.has_posted(&id));
     }
 
@@ -727,8 +705,14 @@ mod tests {
             .unwrap();
         assert_eq!(ledger.balance(LedgerAccount::Cash), MoneyMinor::new(3));
         assert_eq!(ledger.balance(LedgerAccount::Borrow), MoneyMinor::new(3));
-        assert_eq!(ledger.balance(LedgerAccount::Dividends), MoneyMinor::new(-8));
-        assert_eq!(ledger.balance(LedgerAccount::Settlement), MoneyMinor::new(2));
+        assert_eq!(
+            ledger.balance(LedgerAccount::Dividends),
+            MoneyMinor::new(-8)
+        );
+        assert_eq!(
+            ledger.balance(LedgerAccount::Settlement),
+            MoneyMinor::new(2)
+        );
     }
 
     #[test]
