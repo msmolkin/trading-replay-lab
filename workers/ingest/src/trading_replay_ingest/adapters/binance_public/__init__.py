@@ -386,7 +386,11 @@ class BinancePublicAdapter:
 
 def _timestamp_to_ns(raw: str, product: BinanceProduct, archive_day: date) -> int:
     value = int(raw, 10)
-    multiplier = 1_000 if product == BinanceProduct.SPOT and archive_day >= SPOT_MICROSECOND_START else 1_000_000
+    multiplier = (
+        1_000
+        if product == BinanceProduct.SPOT and archive_day >= SPOT_MICROSECOND_START
+        else 1_000_000
+    )
     result = value * multiplier
     if result > 2**63 - 1:
         raise BinanceSchemaError("timestamp exceeds canonical signed 64-bit range")
@@ -404,9 +408,7 @@ def _canonical_uint(value: str) -> str:
     return text
 
 
-def _decimal_atoms(
-    value: str, scale: int, *, signed: bool, positive: bool = False
-) -> int:
+def _decimal_atoms(value: str, scale: int, *, signed: bool, positive: bool = False) -> int:
     try:
         decimal = Decimal(value.strip())
     except InvalidOperation as error:
