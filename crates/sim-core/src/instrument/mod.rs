@@ -198,7 +198,8 @@ impl InstrumentDefinition {
         if price_value <= 0 {
             return Err(InstrumentError::InvalidPrice);
         }
-        let price_unsigned = u64::try_from(price_value).map_err(|_| InstrumentError::InvalidPrice)?;
+        let price_unsigned =
+            u64::try_from(price_value).map_err(|_| InstrumentError::InvalidPrice)?;
         if price_unsigned % self.tick_size_atoms != 0 {
             return Err(InstrumentError::InvalidPrice);
         }
