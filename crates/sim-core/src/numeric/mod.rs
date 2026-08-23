@@ -184,11 +184,7 @@ fn pow10(scale: u8) -> Result<i128, NumericError> {
     Ok(10_i128.pow(u32::from(scale)))
 }
 
-fn div_round(
-    numerator: i128,
-    denominator: i128,
-    rounding: Rounding,
-) -> Result<i128, NumericError> {
+fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i128, NumericError> {
     if denominator <= 0 {
         return Err(NumericError::InvalidDivisor);
     }
