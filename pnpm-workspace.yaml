@@ -4,5 +4,6 @@ packages:
 
 minimumReleaseAge: 1440
 
-onlyBuiltDependencies:
-  - sharp
+# pnpm 11 denies dependency build scripts by default; approve only reviewed builds.
+allowBuilds:
+  sharp: true
