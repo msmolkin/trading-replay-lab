@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "instrument_id": "binance:BTCUSDT:spot",
+  "venue_id": "binance",
+  "provider_symbols": {"binance": "BTCUSDT"},
+  "asset_class": "CRYPTO",
+  "product_type": "SPOT",
+  "base_currency": "BTC",
+  "quote_currency": "USDT",
+  "settlement_currency": "USDT",
+  "tick_size_atoms": "1",
+  "qty_increment_atoms": "1",
+  "price_scale": 2,
+  "qty_scale": 6,
+  "contract_multiplier_atoms": "1",
+  "multiplier_scale": 0,
+  "settlement_kind": "LINEAR",
+  "session_calendar": "24x7-utc",
+  "effective_from_ns": "1704067200000000000"
+}

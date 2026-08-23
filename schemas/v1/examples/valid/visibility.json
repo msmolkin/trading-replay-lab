@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "phase": "ACTIVE",
+  "revealed_through_ns": "1704067200123456789",
+  "permitted_intervals": ["1m", "5m", "1h"],
+  "identity_visibility": "HIDDEN_UNTIL_COMPLETE",
+  "calendar_visibility": "RELATIVE",
+  "order_flow_visibility": "TRADES",
+  "generation": "9"
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/manifest.schema.json",
+  "title": "DatasetManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "manifest_id", "provider", "dataset", "adapter_version", "canonical_schema_version",
+    "venue_id", "instrument_id", "instrument_definition_hash", "requested_start_ns", "requested_end_ns",
+    "actual_start_ns", "actual_end_ns", "source_objects", "source_content_hashes", "canonical_content_hash",
+    "row_counts", "min_event_ts_ns", "max_event_ts_ns", "duplicates_removed", "known_gaps", "quality_decisions",
+    "redistribution_class", "ingested_at_ns", "tool_build_id", "status", "capabilities"
+  ],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+    "manifest_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "provider": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "dataset": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "adapter_version": {"type": "string", "minLength": 1},
+    "canonical_schema_version": {"const": "1.0.0"},
+    "venue_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "instrument_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "instrument_definition_hash": {"$ref": "common.schema.json#/$defs/Sha256"},
+    "requested_start_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "requested_end_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "actual_start_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "actual_end_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "source_objects": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "source_content_hashes": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/Sha256"}},
+    "canonical_content_hash": {"$ref": "common.schema.json#/$defs/Sha256"},
+    "row_counts": {"type": "object", "additionalProperties": {"$ref": "common.schema.json#/$defs/WireUInt64"}},
+    "min_event_ts_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "max_event_ts_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "min_source_sequence": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "max_source_sequence": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "duplicates_removed": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "duplicate_policy": {"type": "string"},
+    "known_gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "crossed_book_intervals": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "stale_quote_intervals": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "quality_decisions": {"type": "array", "items": {"type": "string"}},
+    "redistribution_class": {"type": "string", "enum": ["REDISTRIBUTABLE", "USER_LICENSED", "RESTRICTED", "UNKNOWN"]},
+    "ingested_at_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "tool_build_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["PENDING", "VALID", "DEGRADED", "QUARANTINED", "REVOKED"]},
+    "capabilities": {"$ref": "#/$defs/DataCapabilities"}
+  },
+  "$defs": {
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_ns", "end_ns", "reason"],
+      "properties": {
+        "start_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "end_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "DataCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bar_intervals", "has_trades", "has_bbo", "has_l2_snapshots", "has_l2_deltas", "has_l3",
+        "has_mark_price", "has_index_price", "has_funding", "has_open_interest", "has_liquidations",
+        "source_start_ns", "source_end_ns", "known_gaps", "timestamp_resolution_ns", "sequence_quality",
+        "redistribution_class", "execution_tier"
+      ],
+      "properties": {
+        "bar_intervals": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "has_trades": {"type": "boolean"}, "has_bbo": {"type": "boolean"},
+        "has_l2_snapshots": {"type": "boolean"}, "has_l2_deltas": {"type": "boolean"}, "has_l3": {"type": "boolean"},
+        "has_mark_price": {"type": "boolean"}, "has_index_price": {"type": "boolean"}, "has_funding": {"type": "boolean"},
+        "has_open_interest": {"type": "boolean"}, "has_liquidations": {"type": "boolean"},
+        "source_start_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "source_end_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "known_gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+        "timestamp_resolution_ns": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+        "sequence_quality": {"type": "string", "enum": ["NONE", "WEAK", "CONTIGUOUS", "VENUE_AUTHORITATIVE"]},
+        "redistribution_class": {"type": "string", "enum": ["REDISTRIBUTABLE", "USER_LICENSED", "RESTRICTED", "UNKNOWN"]},
+        "execution_tier": {"type": "string", "enum": ["F0", "F0T", "F1", "F2", "F3"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/command-event.schema.json",
+  "title": "CommandAndDomainEvents",
+  "$defs": {
+    "SetLeverageCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command_type", "requested_leverage"],
+      "properties": {"command_type": {"const": "SET_LEVERAGE"}, "requested_leverage": {"type": "integer", "minimum": 1, "maximum": 50}}
+    },
+    "CancelOrderCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command_type", "order_id"],
+      "properties": {"command_type": {"const": "CANCEL_ORDER"}, "order_id": {"$ref": "common.schema.json#/$defs/Identifier"}}
+    },
+    "ReplaceOrderCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command_type", "order_id", "replacement"],
+      "properties": {
+        "command_type": {"const": "REPLACE_ORDER"},
+        "order_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "replacement": {"$ref": "order.schema.json"}
+      }
+    },
+    "CommandPayload": {
+      "oneOf": [
+        {"$ref": "order.schema.json"}, {"$ref": "#/$defs/SetLeverageCommand"},
+        {"$ref": "#/$defs/CancelOrderCommand"}, {"$ref": "#/$defs/ReplaceOrderCommand"}
+      ]
+    },
+    "CommandEnvelope": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "command_id", "idempotency_key", "session_id", "principal_id", "accepted_at_ns",
+        "logical_ts_ns", "arrival_seq", "expected_session_version", "payload", "payload_hash"
+      ],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+        "command_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 200},
+        "session_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "principal_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "accepted_at_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "logical_ts_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "arrival_seq": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "expected_session_version": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "payload": {"$ref": "#/$defs/CommandPayload"},
+        "payload_hash": {"$ref": "common.schema.json#/$defs/Sha256"}
+      }
+    },
+    "FillPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["order_id", "execution_id", "signed_qty_atoms", "price_atoms", "liquidity_role", "model_version", "market_event_refs", "fee_minor", "uncertainty_flags"],
+      "properties": {
+        "order_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "execution_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "signed_qty_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "liquidity_role": {"type": "string", "enum": ["MAKER", "TAKER", "SIMULATED_MAKER", "UNKNOWN"]},
+        "model_version": {"type": "string", "minLength": 1},
+        "market_event_refs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/Identifier"}},
+        "fee_minor": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "uncertainty_flags": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/QualityFlag"}, "uniqueItems": true}
+      }
+    },
+    "LedgerPosting": {
+      "type": "object", "additionalProperties": false,
+      "required": ["account", "amount_minor", "currency"],
+      "properties": {
+        "account": {"type": "string", "enum": ["CASH", "POSITION_COST_BASIS", "REALIZED_PNL", "UNREALIZED_PNL", "FEES", "FUNDING", "BORROW", "DIVIDENDS", "MARGIN_COLLATERAL", "LIQUIDATION_PENALTY", "DEFICIT"]},
+        "amount_minor": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "currency": {"$ref": "common.schema.json#/$defs/Identifier"}
+      }
+    },
+    "LedgerTransactionPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["transaction_id", "postings"],
+      "properties": {
+        "transaction_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "postings": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/LedgerPosting"}}
+      }
+    },
+    "DomainEvent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "session_id", "event_seq", "logical_ts_ns", "event_type", "causation_id", "correlation_id", "payload", "prior_event_hash", "current_event_hash"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+        "session_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "event_seq": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "logical_ts_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "event_type": {"type": "string", "minLength": 1},
+        "causation_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "correlation_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "payload": {"type": "object", "additionalProperties": true},
+        "prior_event_hash": {"$ref": "common.schema.json#/$defs/Sha256"},
+        "current_event_hash": {"$ref": "common.schema.json#/$defs/Sha256"}
+      }
+    }
+  },
+  "oneOf": [{"$ref": "#/$defs/CommandEnvelope"}, {"$ref": "#/$defs/DomainEvent"}]
+}

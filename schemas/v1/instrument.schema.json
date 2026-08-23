@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/instrument.schema.json",
+  "title": "InstrumentDefinition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "instrument_id", "venue_id", "provider_symbols", "asset_class",
+    "product_type", "base_currency", "quote_currency", "settlement_currency",
+    "tick_size_atoms", "qty_increment_atoms", "price_scale", "qty_scale",
+    "contract_multiplier_atoms", "multiplier_scale", "settlement_kind", "session_calendar",
+    "effective_from_ns"
+  ],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+    "instrument_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "venue_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "provider_symbols": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "asset_class": {"type": "string", "enum": ["CRYPTO", "EQUITY", "FUTURE"]},
+    "product_type": {"type": "string", "enum": ["SPOT", "PERPETUAL", "FUTURE", "EQUITY"]},
+    "base_currency": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "quote_currency": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "settlement_currency": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "tick_size_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+    "qty_increment_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+    "price_scale": {"$ref": "common.schema.json#/$defs/Scale"},
+    "qty_scale": {"$ref": "common.schema.json#/$defs/Scale"},
+    "contract_multiplier_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+    "multiplier_scale": {"$ref": "common.schema.json#/$defs/Scale"},
+    "settlement_kind": {"type": "string", "enum": ["LINEAR", "INVERSE"]},
+    "session_calendar": {"type": "string", "minLength": 1},
+    "listing_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "expiry_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "effective_from_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "effective_through_ns": {"$ref": "common.schema.json#/$defs/WireInt64"}
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "command_type": "ORDER",
+  "command_id": "cmd-bad",
+  "session_id": "session-1",
+  "instrument_id": "BTC",
+  "side": "BUY",
+  "quantity_atoms": 1.5,
+  "order_type": "MARKET",
+  "time_in_force": "IOC",
+  "reduce_only": false,
+  "post_only": false,
+  "marketable_only": true,
+  "submitted_at_event_seq": "1",
+  "client_idempotency_key": "bad"
+}

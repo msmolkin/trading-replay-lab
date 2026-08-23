@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/common.schema.json",
+  "title": "Trading Replay Lab common contract primitives",
+  "$defs": {
+    "SchemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "WireInt64": {
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]*)$",
+      "x-wire-integer": "int64"
+    },
+    "WireUInt64": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "x-wire-integer": "uint64"
+    },
+    "PositiveWireUInt64": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "x-wire-integer": "uint64"
+    },
+    "Scale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18
+    },
+    "Side": {
+      "type": "string",
+      "enum": ["BUY", "SELL"]
+    },
+    "QualityFlag": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "JsonObject": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

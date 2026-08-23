@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/result-bundle.schema.json",
+  "title": "ResultBundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "session_id", "setup", "ruleset", "commitments", "revealed_nonces", "manifest_hashes", "commands", "domain_events", "state_hashes", "metrics", "result_hash"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+    "session_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "setup": {"type": "object", "additionalProperties": true},
+    "ruleset": {"type": "object", "additionalProperties": true},
+    "commitments": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/Sha256"}},
+    "revealed_nonces": {"type": "array", "items": {"type": "string"}},
+    "manifest_hashes": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/Sha256"}},
+    "commands": {"type": "array", "items": {"$ref": "command-event.schema.json#/$defs/CommandEnvelope"}},
+    "domain_events": {"type": "array", "items": {"$ref": "command-event.schema.json#/$defs/DomainEvent"}},
+    "state_hashes": {"type": "array", "items": {"$ref": "#/$defs/StateHash"}},
+    "metrics": {"$ref": "#/$defs/ResultMetrics"},
+    "result_hash": {"$ref": "common.schema.json#/$defs/Sha256"}
+  },
+  "$defs": {
+    "StateHash": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_seq", "hash"],
+      "properties": {"event_seq": {"$ref": "common.schema.json#/$defs/WireUInt64"}, "hash": {"$ref": "common.schema.json#/$defs/Sha256"}}
+    },
+    "ResultMetrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["survived", "terminal_return_ppb", "max_drawdown_ppb", "peak_effective_leverage_ppb", "benchmark_return_ppb"],
+      "properties": {
+        "survived": {"type": "boolean"},
+        "terminal_return_ppb": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "max_drawdown_ppb": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "peak_effective_leverage_ppb": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "benchmark_return_ppb": {"$ref": "common.schema.json#/$defs/WireInt64"}
+      }
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0.0",
+  "schemas": [
+    {
+      "defs": [
+        "CancelOrderCommand",
+        "CommandEnvelope",
+        "CommandPayload",
+        "DomainEvent",
+        "FillPayload",
+        "LedgerPosting",
+        "LedgerTransactionPayload",
+        "ReplaceOrderCommand",
+        "SetLeverageCommand"
+      ],
+      "file": "command-event.schema.json",
+      "git_blob_sha1": "42f0c8eed88446734eb47898ffeb7e9fa9a512f2",
+      "id": "https://trading-replay-lab.dev/schemas/v1/command-event.schema.json",
+      "title": "CommandAndDomainEvents"
+    },
+    {
+      "defs": [
+        "Identifier",
+        "JsonObject",
+        "PositiveWireUInt64",
+        "QualityFlag",
+        "Scale",
+        "SchemaVersion",
+        "Sha256",
+        "Side",
+        "WireInt64",
+        "WireUInt64"
+      ],
+      "file": "common.schema.json",
+      "git_blob_sha1": "e80417da8f4252b3a84b40d61b4764974dae6471",
+      "id": "https://trading-replay-lab.dev/schemas/v1/common.schema.json",
+      "title": "Trading Replay Lab common contract primitives"
+    },
+    {
+      "defs": [],
+      "file": "index.schema.json",
+      "git_blob_sha1": "5ae7198e1d84a106f17c9a69fac02acf893a8a7e",
+      "id": "https://trading-replay-lab.dev/schemas/v1/index.schema.json",
+      "title": "Trading Replay Lab v1 contract index"
+    },
+    {
+      "defs": [],
+      "file": "instrument.schema.json",
+      "git_blob_sha1": "48775fecd10f7a941c00ea48091d7c2635e59010",
+      "id": "https://trading-replay-lab.dev/schemas/v1/instrument.schema.json",
+      "title": "InstrumentDefinition"
+    },
+    {
+      "defs": [
+        "DataCapabilities",
+        "Gap"
+      ],
+      "file": "manifest.schema.json",
+      "git_blob_sha1": "926fe4e3a8dd98cbb181748c5f8a605dbe385d8a",
+      "id": "https://trading-replay-lab.dev/schemas/v1/manifest.schema.json",
+      "title": "DatasetManifest"
+    },
+    {
+      "defs": [
+        "BarPayload",
+        "BboPayload",
+        "BookDeltaL2Payload",
+        "BookSnapshotL2Payload",
+        "MarketPayload",
+        "OrderEventL3Payload",
+        "PriceQty",
+        "ScalarPayload",
+        "TradePayload"
+      ],
+      "file": "market-event.schema.json",
+      "git_blob_sha1": "a304b064ae66c430f9cdc116a439003ead31b7de",
+      "id": "https://trading-replay-lab.dev/schemas/v1/market-event.schema.json",
+      "title": "MarketEvent"
+    },
+    {
+      "defs": [],
+      "file": "order.schema.json",
+      "git_blob_sha1": "655c21bde64615b8987f2400e8058820744c1e36",
+      "id": "https://trading-replay-lab.dev/schemas/v1/order.schema.json",
+      "title": "OrderCommand"
+    },
+    {
+      "defs": [
+        "ResultMetrics",
+        "StateHash"
+      ],
+      "file": "result-bundle.schema.json",
+      "git_blob_sha1": "f619ee0287c25e722e979da0657b9758c5a9e686",
+      "id": "https://trading-replay-lab.dev/schemas/v1/result-bundle.schema.json",
+      "title": "ResultBundle"
+    },
+    {
+      "defs": [],
+      "file": "visibility.schema.json",
+      "git_blob_sha1": "c6a795c96807de2e69991d52f52e1b4efb33f5fc",
+      "id": "https://trading-replay-lab.dev/schemas/v1/visibility.schema.json",
+      "title": "SessionVisibility"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_id": "dataset-1",
+  "instrument_id": "BTC",
+  "venue_id": "venue",
+  "ts_event_ns": 9007199254740993,
+  "canonical_tie_breaker": "0",
+  "kind": "TRADE",
+  "payload": {"price_atoms": "1", "qty_atoms": "1", "aggressor_side": "UNKNOWN"},
+  "quality_flags": []
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "session-1",
+  "setup": {"mode": "practice"},
+  "ruleset": {"version": "1"},
+  "commitments": ["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"],
+  "revealed_nonces": ["example-nonce"],
+  "manifest_hashes": ["ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"],
+  "commands": [],
+  "domain_events": [],
+  "state_hashes": [{"event_seq": "0", "hash": "1111111111111111111111111111111111111111111111111111111111111111"}],
+  "metrics": {
+    "survived": true,
+    "terminal_return_ppb": "125000000",
+    "max_drawdown_ppb": "80000000",
+    "peak_effective_leverage_ppb": "3000000000",
+    "benchmark_return_ppb": "50000000"
+  },
+  "result_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+}

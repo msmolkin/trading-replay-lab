@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/index.schema.json",
+  "title": "Trading Replay Lab v1 contract index",
+  "oneOf": [
+    {"$ref": "instrument.schema.json"},
+    {"$ref": "order.schema.json"},
+    {"$ref": "market-event.schema.json"},
+    {"$ref": "manifest.schema.json"},
+    {"$ref": "command-event.schema.json"},
+    {"$ref": "visibility.schema.json"},
+    {"$ref": "result-bundle.schema.json"}
+  ]
+}
