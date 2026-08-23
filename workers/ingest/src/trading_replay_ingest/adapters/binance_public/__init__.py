@@ -85,7 +85,7 @@ class UrlLibTransport:
     def get(self, url: str, max_bytes: int) -> bytes:
         request = Request(url, headers={"User-Agent": "trading-replay-lab/1"})
         with urlopen(request, timeout=self.timeout_seconds) as response:
-            payload = response.read(max_bytes + 1)
+            payload = bytes(response.read(max_bytes + 1))
         if len(payload) > max_bytes:
             raise BinanceIntegrityError("provider object exceeds configured byte ceiling")
         return payload
