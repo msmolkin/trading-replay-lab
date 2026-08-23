@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import secrets
@@ -10,8 +11,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import cast
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from sqlalchemy import Engine, insert, select, update
+from sqlalchemy import Connection, Engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from trading_replay_api.db.schema import commitments, sessions
@@ -20,6 +22,7 @@ ALGORITHM_VERSION = "trl-episode-v1"
 _KIND = "EPISODE_SELECTION"
 _I64_MIN = -(2**63)
 _I64_MAX = 2**63 - 1
+_U64_MAX = 2**64 - 1
 _MAX_PLAYER_NONCE_BYTES = 256
 
 
@@ -358,7 +361,9 @@ class CommitmentService:
             secret = self._unseal_secret(session_id, commitment_id, str(row[6]))
             secret_hex = secret.hex()
             if row[7] is not None and not hmac.compare_digest(str(row[7]), secret_hex):
-                raise CommitmentVerificationError("stored revealed secret conflicts with sealed secret")
+                raise CommitmentVerificationError(
+                    "stored revealed secret conflicts with sealed secret"
+                )
 
             metadata = _metadata(row[5])
             player_nonce_hex = _metadata_string(metadata, "player_nonce_hex")
@@ -393,8 +398,8 @@ class CommitmentService:
                 eligible_set_hash=eligible_digest,
                 secret_hex=secret_hex,
                 player_nonce_hex=player_nonce_hex,
-                selected_index=_metadata_int(metadata, "selected_index"),
-                draw_counter=_metadata_int(metadata, "draw_counter"),
+                selected_index=_metadata_u64(metadata, "selected_index"),
+                draw_counter=_metadata_u64(metadata, "draw_counter"),
                 selected_episode=selected_episode,
             )
 
@@ -402,13 +407,15 @@ class CommitmentService:
         nonce = self._entropy(12)
         if len(nonce) != 12:
             raise RuntimeError("entropy source returned an invalid AEAD nonce")
-        ciphertext = self._cipher.encrypt(nonce, secret, _associated_data(session_id, commitment_id))
+        ciphertext = self._cipher.encrypt(
+            nonce, secret, _associated_data(session_id, commitment_id)
+        )
         return base64.urlsafe_b64encode(nonce + ciphertext).decode("ascii")
 
     def _unseal_secret(self, session_id: str, commitment_id: str, sealed: str) -> bytes:
         try:
             payload = base64.b64decode(sealed.encode("ascii"), altchars=b"-_", validate=True)
-        except (ValueError, UnicodeEncodeError) as error:
+        except (binascii.Error, ValueError, UnicodeEncodeError) as error:
             raise CommitmentVerificationError("sealed selection secret is invalid") from error
         if len(payload) < 13:
             raise CommitmentVerificationError("sealed selection secret is truncated")
@@ -418,25 +425,26 @@ class CommitmentService:
                 payload[12:],
                 _associated_data(session_id, commitment_id),
             )
-        except Exception as error:
-            raise CommitmentVerificationError("sealed selection secret authentication failed") from error
+        except (InvalidTag, ValueError) as error:
+            raise CommitmentVerificationError(
+                "sealed selection secret authentication failed"
+            ) from error
         if len(secret) != 32:
             raise CommitmentVerificationError("unsealed selection secret has invalid length")
         return secret
 
     @staticmethod
     def _require_session(
-        connection: object,
+        connection: Connection,
         session_id: str,
         principal_id: str,
         *,
         expected_status: str | None = None,
     ) -> None:
-        from sqlalchemy.engine import Connection
-
-        typed_connection = cast(Connection, connection)
-        row = typed_connection.execute(
-            select(sessions.c.principal_id, sessions.c.status).where(sessions.c.session_id == session_id)
+        row = connection.execute(
+            select(sessions.c.principal_id, sessions.c.status).where(
+                sessions.c.session_id == session_id
+            )
         ).one_or_none()
         if row is None:
             raise CommitmentNotFound(session_id)
@@ -588,10 +596,22 @@ def _metadata_string(value: dict[str, object], key: str) -> str:
 
 def _metadata_int(value: dict[str, object], key: str) -> int:
     item = _metadata_string(value, key)
-    if not item or (item[0] == "-" and not item[1:].isdigit()) or (
-        item[0] != "-" and not item.isdigit()
+    if (
+        not item
+        or (item[0] == "-" and not item[1:].isdigit())
+        or (item[0] != "-" and not item.isdigit())
     ):
         raise CommitmentVerificationError(f"stored commitment metadata field {key} is invalid")
     parsed = int(item)
     _validate_i64(parsed, key)
+    return parsed
+
+
+def _metadata_u64(value: dict[str, object], key: str) -> int:
+    item = _metadata_string(value, key)
+    if not item or not item.isdigit():
+        raise CommitmentVerificationError(f"stored commitment metadata field {key} is invalid")
+    parsed = int(item)
+    if parsed > _U64_MAX:
+        raise CommitmentVerificationError(f"stored commitment metadata field {key} is invalid")
     return parsed
