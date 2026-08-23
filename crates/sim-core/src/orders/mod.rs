@@ -229,8 +229,10 @@ pub enum OrderError {
     Overfill,
     /// Generic fills cannot partially fill FOK orders.
     PartialFokFill,
-    /// Operation requires IOC or FOK.
+    /// Immediate execution was requested for a GTC order.
     NotImmediateOrder,
+    /// A generic GTC fill was requested for an IOC/FOK order.
+    ImmediateOrderRequiresAtomicExecution,
     /// Arithmetic/id/revision counter exhausted.
     CounterOverflow,
 }
@@ -256,6 +258,9 @@ impl core::fmt::Display for OrderError {
             Self::Overfill => "fill exceeds remaining order quantity",
             Self::PartialFokFill => "FOK order cannot be partially filled",
             Self::NotImmediateOrder => "order is not IOC or FOK",
+            Self::ImmediateOrderRequiresAtomicExecution => {
+                "IOC/FOK orders require atomic immediate execution"
+            }
             Self::CounterOverflow => "order state counter overflow",
         };
         formatter.write_str(message)
@@ -473,10 +478,7 @@ impl OrderState {
             .checked_add(1)
             .ok_or(OrderError::CounterOverflow)?;
 
-        let order = self
-            .orders
-            .get_mut(&id)
-            .expect("order existence checked above");
+        let order = self.orders.get_mut(&id).ok_or(OrderError::UnknownOrder)?;
         order.quantity = accepted_total;
         order.kind = replacement.kind;
         order.revision = next_revision;
@@ -506,7 +508,7 @@ impl OrderState {
             return Err(OrderError::InvalidState);
         }
         if order.time_in_force != TimeInForce::Gtc {
-            return Err(OrderError::NotImmediateOrder);
+            return Err(OrderError::ImmediateOrderRequiresAtomicExecution);
         }
         Self::apply_fill(order, quantity, false)?;
         Ok(order.status)
@@ -514,11 +516,11 @@ impl OrderState {
 
     /// Applies one complete liquidity attempt atomically to an IOC or FOK order.
     ///
-    /// FOK fills all remaining quantity or fills nothing and cancels. IOC consumes the
-    /// supplied available quantity and cancels any remainder.
+    /// FOK fills all remaining quantity if enough liquidity is available or fills nothing.
+    /// IOC consumes up to the remaining quantity and cancels any unfilled remainder.
     ///
     /// # Errors
-    /// Returns a state/overfill error without mutation.
+    /// Returns a state error without mutation.
     pub fn execute_immediate(
         &mut self,
         id: OrderId,
@@ -532,12 +534,10 @@ impl OrderState {
             return Err(OrderError::NotImmediateOrder);
         }
         let remaining = order.remaining();
-        if available_fill > remaining {
-            return Err(OrderError::Overfill);
-        }
+        let fillable = QtyAtoms::new(available_fill.get().min(remaining.get()));
 
         match order.time_in_force {
-            TimeInForce::Fok if available_fill != remaining => {
+            TimeInForce::Fok if available_fill < remaining => {
                 order.status = OrderStatus::Cancelled;
                 Ok(ImmediateExecution {
                     filled: QtyAtoms::new(0),
@@ -545,21 +545,21 @@ impl OrderState {
                 })
             }
             TimeInForce::Fok => {
-                Self::apply_fill(order, available_fill, true)?;
+                Self::apply_fill(order, remaining, true)?;
                 Ok(ImmediateExecution {
-                    filled: available_fill,
+                    filled: remaining,
                     status: order.status,
                 })
             }
             TimeInForce::Ioc => {
-                if available_fill.get() > 0 {
-                    Self::apply_fill(order, available_fill, true)?;
+                if fillable.get() > 0 {
+                    Self::apply_fill(order, fillable, true)?;
                 }
                 if !order.status.is_terminal() {
                     order.status = OrderStatus::Cancelled;
                 }
                 Ok(ImmediateExecution {
-                    filled: available_fill,
+                    filled: fillable,
                     status: order.status,
                 })
             }
@@ -617,18 +617,12 @@ impl OrderState {
         )
         .is_err()
         {
-            let order = self
-                .orders
-                .get_mut(&id)
-                .expect("order existence checked above");
+            let order = self.orders.get_mut(&id).ok_or(OrderError::UnknownOrder)?;
             order.status = OrderStatus::Rejected;
             return Ok(TriggerOutcome::Rejected);
         }
 
-        let order = self
-            .orders
-            .get_mut(&id)
-            .expect("order existence checked above");
+        let order = self.orders.get_mut(&id).ok_or(OrderError::UnknownOrder)?;
         order.kind = converted;
         order.status = if order.filled.get() == 0 {
             OrderStatus::Working
@@ -720,8 +714,8 @@ impl OrderState {
         excluding: Option<OrderId>,
     ) -> Result<QtyAtoms, OrderError> {
         let reducible = match (position_atoms.cmp(&0), side) {
-            (core::cmp::Ordering::Greater, Side::Sell) => position_atoms.unsigned_abs(),
-            (core::cmp::Ordering::Less, Side::Buy) => position_atoms.unsigned_abs(),
+            (core::cmp::Ordering::Greater, Side::Sell)
+            | (core::cmp::Ordering::Less, Side::Buy) => position_atoms.unsigned_abs(),
             _ => return Err(OrderError::ReduceOnlyWrongSide),
         };
         let reserved = self
@@ -936,6 +930,16 @@ mod tests {
         assert_eq!(ioc_result.status, OrderStatus::Cancelled);
         assert_eq!(state.get(ioc).unwrap().filled.get(), 4);
 
+        let ioc_excess = state
+            .submit(limit(Side::Buy, 101, TimeInForce::Ioc), 0, None)
+            .unwrap()
+            .order_id;
+        let ioc_excess_result = state
+            .execute_immediate(ioc_excess, QtyAtoms::new(40))
+            .unwrap();
+        assert_eq!(ioc_excess_result.filled.get(), 10);
+        assert_eq!(ioc_excess_result.status, OrderStatus::Filled);
+
         let fok = state
             .submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None)
             .unwrap()
@@ -949,8 +953,23 @@ mod tests {
             .submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None)
             .unwrap()
             .order_id;
-        let filled = state.execute_immediate(full, QtyAtoms::new(10)).unwrap();
+        let filled = state.execute_immediate(full, QtyAtoms::new(11)).unwrap();
+        assert_eq!(filled.filled.get(), 10);
         assert_eq!(filled.status, OrderStatus::Filled);
+    }
+
+    #[test]
+    fn immediate_orders_cannot_use_generic_fill_path() {
+        let mut state = OrderState::new();
+        let id = state
+            .submit(limit(Side::Buy, 101, TimeInForce::Ioc), 0, None)
+            .unwrap()
+            .order_id;
+        assert_eq!(
+            state.record_fill(id, QtyAtoms::new(1)),
+            Err(OrderError::ImmediateOrderRequiresAtomicExecution)
+        );
+        assert_eq!(state.get(id).unwrap().filled.get(), 0);
     }
 
     #[test]
