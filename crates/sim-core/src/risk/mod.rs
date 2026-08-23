@@ -1,7 +1,9 @@
 //! Deterministic isolated-margin, leverage, pre-trade, and liquidation rules.
 
 use crate::economics::{EconomicsError, EconomicsMath, apply_rate_ppb};
-use crate::numeric::{MoneyMinor, NumericError, PriceAtoms, QtyAtoms, RatePpb, Rounding, linear_notional_minor};
+use crate::numeric::{
+    MoneyMinor, NumericError, PriceAtoms, QtyAtoms, RatePpb, Rounding, linear_notional_minor,
+};
 use crate::orders::{OrderState, Side};
 use crate::positions::Position;
 
@@ -143,7 +145,9 @@ impl core::fmt::Display for RiskError {
                 formatter.write_str("maintenance rate must be between 0 and 1_000_000_000 ppb")
             }
             Self::InvalidPrice => formatter.write_str("risk mark price must be positive"),
-            Self::InsufficientMargin => formatter.write_str("insufficient margin for requested risk"),
+            Self::InsufficientMargin => {
+                formatter.write_str("insufficient margin for requested risk")
+            }
             Self::InvalidLiquidationTransition => {
                 formatter.write_str("invalid liquidation state transition")
             }
@@ -240,15 +244,15 @@ impl RiskState {
         &mut self,
         position: Position,
         snapshot: MarginSnapshot,
-    ) -> Result<bool, RiskError> {
+    ) -> bool {
         if self.liquidation != LiquidationState::Healthy || position.quantity_atoms == 0 {
-            return Ok(false);
+            return false;
         }
         if snapshot.equity.get() <= snapshot.maintenance_margin.get() {
             self.liquidation = LiquidationState::Triggered;
-            return Ok(true);
+            return true;
         }
-        Ok(false)
+        false
     }
 
     /// Starts deterministic forced-close execution after a trigger.
@@ -300,12 +304,8 @@ pub fn margin_snapshot(
     validate_price(mark_price)?;
 
     let position_quantity = QtyAtoms::new(position.quantity_atoms.unsigned_abs());
-    let position_initial_margin = initial_margin(
-        position_quantity,
-        mark_price,
-        leverage,
-        profile.math,
-    )?;
+    let position_initial_margin =
+        initial_margin(position_quantity, mark_price, leverage, profile.math)?;
     let maintenance_margin = maintenance_margin(
         position_quantity,
         mark_price,
@@ -313,12 +313,8 @@ pub fn margin_snapshot(
         profile.math,
     )?;
     let expansion = working_order_expansion_atoms(orders, instrument_id, position.quantity_atoms)?;
-    let working_order_margin = initial_margin(
-        QtyAtoms::new(expansion),
-        mark_price,
-        leverage,
-        profile.math,
-    )?;
+    let working_order_margin =
+        initial_margin(QtyAtoms::new(expansion), mark_price, leverage, profile.math)?;
     let total_initial = checked_money_add(position_initial_margin, working_order_margin)?;
     let available = equity
         .get()
@@ -806,7 +802,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(before.maintenance_margin, MoneyMinor::new(100));
-        assert!(!state.evaluate_liquidation(position, before).unwrap());
+        assert!(!state.evaluate_liquidation(position, before));
 
         let after_funding = margin_snapshot(
             MoneyMinor::new(99),
@@ -818,7 +814,7 @@ mod tests {
             profile(),
         )
         .unwrap();
-        assert!(state.evaluate_liquidation(position, after_funding).unwrap());
+        assert!(state.evaluate_liquidation(position, after_funding));
         assert_eq!(state.liquidation_state(), LiquidationState::Triggered);
     }
 
@@ -837,7 +833,7 @@ mod tests {
             profile(),
         )
         .unwrap();
-        assert!(state.evaluate_liquidation(position, snapshot).unwrap());
+        assert!(state.evaluate_liquidation(position, snapshot));
         state.begin_liquidation().unwrap();
         assert_eq!(
             state.complete_liquidation(position),
