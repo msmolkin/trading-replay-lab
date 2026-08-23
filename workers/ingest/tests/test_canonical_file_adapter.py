@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Literal
 
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
+from pyarrow import parquet as pq
 
 from trading_replay_ingest.adapters.canonical_file import (
     CanonicalFileAdapter,
