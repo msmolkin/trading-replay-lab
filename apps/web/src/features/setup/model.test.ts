@@ -165,7 +165,13 @@ test("ineligible catalog report surfaces stable rejection reasons", () => {
     eligibleReport(checking, {
       eligible: false,
       rejectionReasons: ["KNOWN_GAP_INTERSECTS_PLAY"],
-      gaps: [{ startNs: "1700000000000000001", endNs: "1700000000000000100", reason: "gap" }],
+      gaps: [
+        {
+          startNs: "1700000000000000001",
+          endNs: "1700000000000000100",
+          reason: "gap",
+        },
+      ],
     }),
   );
   assert.equal(canCommit(state), false);
