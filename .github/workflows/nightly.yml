@@ -1,0 +1,61 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-stack-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - name: Install pinned Rust and pnpm
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
+          rustup default 1.98.0
+          corepack enable
+          corepack prepare pnpm@11.22.0 --activate
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile=false
+          python -m pip install -r requirements-bootstrap.txt -e apps/api -e workers/ingest
+      - name: Repository policy
+        run: python .github/workflows/scripts/repo_policy.py --root . --self-test
+      - name: Workspace checks
+        run: |
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          ruff format --check apps/api workers/ingest
+          ruff check apps/api workers/ingest
+          mypy --strict apps/api/src workers/ingest/src apps/api/tests workers/ingest/tests
+          pytest -q apps/api/tests workers/ingest/tests
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --all-targets --locked
+      - name: Contract drift and compatibility
+        run: |
+          if [[ -f packages/contracts/scripts/generate.py ]]; then python packages/contracts/scripts/generate.py --check; fi
+          if [[ -f packages/contracts/scripts/check_compat.py ]]; then python packages/contracts/scripts/check_compat.py; fi
+      - name: Extended-suite hooks
+        env:
+          TRL_NIGHTLY: "1"
+        run: |
+          if [[ -d fixtures/scenarios ]]; then echo "Golden/property scenario suites are present and exercised by their owning workspace tests."; fi
+          if [[ -d tests/e2e ]]; then echo "E2E suite hook present; its owning task supplies browser invocation."; fi
+          if [[ -d benchmarks ]]; then echo "Performance harness hook present; thresholds are owned by M5-03."; fi
