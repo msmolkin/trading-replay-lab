@@ -77,7 +77,11 @@ class CoverageCatalog:
         """Return all immutable versions in deterministic ingestion/hash order."""
         return tuple(
             sorted(
-                (record for record in self._manifests.values() if record.manifest_id == manifest_id),
+                (
+                    record
+                    for record in self._manifests.values()
+                    if record.manifest_id == manifest_id
+                ),
                 key=lambda record: (record.ingested_at_ns, record.manifest_hash),
             )
         )
@@ -200,7 +204,9 @@ def _segment_meets_policy(segment: CoverageSegment, requirement: SetupRequiremen
     return True
 
 
-def _subtract_gaps(start_ns: int, end_ns: int, gaps: tuple[Gap, ...]) -> tuple[tuple[int, int], ...]:
+def _subtract_gaps(
+    start_ns: int, end_ns: int, gaps: tuple[Gap, ...]
+) -> tuple[tuple[int, int], ...]:
     clipped = sorted(
         (
             max(start_ns, gap.start_ns),
