@@ -90,7 +90,12 @@ commitments = Table(
     Column("commitment_id", String(160), primary_key=True),
     Column("session_id", ForeignKey("sessions.session_id"), nullable=False),
     Column("kind", String(64), nullable=False),
+    Column("algorithm_version", String(32), nullable=False),
     Column("commitment_hash", String(64), nullable=False),
+    Column("setup_hash", String(64), nullable=False),
+    Column("eligible_set_hash", String(64), nullable=False),
+    Column("metadata_json", JSON, nullable=False),
+    Column("sealed_secret", Text, nullable=False),
     Column("revealed_secret", Text, nullable=True),
     UniqueConstraint("session_id", "kind", name="uq_commitments_session_kind"),
 )
