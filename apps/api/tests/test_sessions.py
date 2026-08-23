@@ -364,7 +364,7 @@ def test_invalid_integer_inputs_use_stable_error_code(tmp_path: Path) -> None:
         api.create_session(
             session_id="session-1",
             principal_id="principal-1",
-            created_at_ns=True,  # type: ignore[arg-type]
+            created_at_ns=True,
         )
     assert created_invalid.value.code == SessionErrorCode.INVALID_VALUE
 
