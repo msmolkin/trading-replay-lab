@@ -1,0 +1,43 @@
+{
+  "coverage": [
+    "timestamp_ties",
+    "sequence_gap",
+    "partial_depth",
+    "funding",
+    "corporate_action",
+    "ambiguous_bar"
+  ],
+  "files": [
+    {
+      "path": "edge-events.jsonl",
+      "rows": 2,
+      "sha256": "2290e240c53b77fea65abf1b5437b01f49584af8d3a03761ebc276076eca8a83"
+    },
+    {
+      "path": "f0.jsonl",
+      "rows": 3,
+      "sha256": "7e5c49eb2245a98fca12661f2e41734b0d3e62452fcddcb2003734522e15409e"
+    },
+    {
+      "path": "f1.jsonl",
+      "rows": 4,
+      "sha256": "83e862a7957b84285d6bee325ea5b2ffb27cdaa8853e57612e58cc731e28fde6"
+    },
+    {
+      "path": "f2.jsonl",
+      "rows": 5,
+      "sha256": "b6d321e6b4456ce14cff338985496da8af71cd6cc5e2a5819b0a54cd75fa3140"
+    }
+  ],
+  "fixture_version": "1",
+  "instrument": {
+    "instrument_id": "SYNTH-BTC-USD",
+    "price_scale": 2,
+    "qty_increment_atoms": "1",
+    "qty_scale": 0,
+    "tick_size_atoms": "10",
+    "venue_id": "TRL-SYNTH"
+  },
+  "license": "CC0-1.0",
+  "provenance": "Generated deterministically by tools/fixture-generator/generate.py; no market data source was used."
+}
