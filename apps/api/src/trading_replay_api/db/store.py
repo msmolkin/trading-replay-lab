@@ -163,7 +163,10 @@ class EventStore:
                 expected_seq = 0 if last is None else int(last.event_seq) + 1
                 expected_prior_hash = ZERO_HASH if last is None else str(last.current_event_hash)
                 for event in events:
-                    if event.event_seq != expected_seq or event.prior_event_hash != expected_prior_hash:
+                    if (
+                        event.event_seq != expected_seq
+                        or event.prior_event_hash != expected_prior_hash
+                    ):
                         raise EventChainConflict(
                             f"expected seq/hash {expected_seq}/{expected_prior_hash}, "
                             f"received {event.event_seq}/{event.prior_event_hash}"
@@ -228,8 +231,8 @@ class EventStore:
         """Return persisted event count for tests/read-model handoff."""
         with self.engine.connect() as connection:
             count = connection.execute(
-                select(func.count()).select_from(domain_events).where(
-                    domain_events.c.session_id == session_id
-                )
+                select(func.count())
+                .select_from(domain_events)
+                .where(domain_events.c.session_id == session_id)
             ).scalar_one()
             return int(count)
