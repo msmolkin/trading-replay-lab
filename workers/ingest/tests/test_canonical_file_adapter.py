@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -44,7 +44,7 @@ def request() -> FetchRequest:
 def declaration(format_name: str) -> ImportDeclaration:
     assert format_name in {"csv", "parquet"}
     return ImportDeclaration(
-        format=cast("Literal['csv', 'parquet']", format_name),
+        format=cast(Literal["csv", "parquet"], format_name),
         mappings=MAPPINGS,
         defaults=DEFAULTS,
         capabilities=("TRADES",),
