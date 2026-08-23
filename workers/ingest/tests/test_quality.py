@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, cast
+from typing import cast
 
 from trading_replay_ingest.quality import QualityPolicy, validate_events
 
@@ -103,7 +104,9 @@ def test_committed_f2_gap_fixture_is_quarantined_reproducibly() -> None:
     root = Path(__file__).resolve().parents[3]
     raw_events = [
         json.loads(line)
-        for line in (root / "fixtures" / "micro" / "f2.jsonl").read_text(encoding="utf-8").splitlines()
+        for line in (root / "fixtures" / "micro" / "f2.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if line
     ]
     events = cast(list[Mapping[str, object]], raw_events)
