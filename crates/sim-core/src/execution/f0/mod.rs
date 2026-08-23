@@ -160,20 +160,38 @@ pub fn execute_bar(
     config: F0Config,
 ) -> Result<F0Outcome, F0Error> {
     bar.validate()?;
-    let before = orders.get(order_id).ok_or(OrderError::UnknownOrder)?.clone();
+    let before = orders
+        .get(order_id)
+        .ok_or(OrderError::UnknownOrder)?
+        .clone();
     if before.status.is_terminal() || bar.event_seq <= before.submitted_at_event_seq {
         return Ok(no_fill(&before, false, Vec::new()));
     }
 
-    let mut triggered = false;
-    let mut uncertainty = Vec::new();
     let original_kind = before.kind;
     let original_stop = stop_price(original_kind);
+    let stop_will_trigger = before.status == OrderStatus::Dormant
+        && original_stop.is_some_and(|stop| stop_touched(before.side, stop, bar));
+    let precomputed_stop_market_price = if stop_will_trigger
+        && matches!(original_kind, OrderKind::StopMarket { .. })
+    {
+        let base = stop_market_base_price(before.side, original_stop, bar);
+        Some(adverse_slippage(
+            base,
+            before.side,
+            config.market_slippage_atoms,
+        )?)
+    } else {
+        None
+    };
+
+    let mut triggered = false;
+    let mut uncertainty = Vec::new();
     if before.status == OrderStatus::Dormant {
         let Some(stop) = original_stop else {
             return Err(OrderError::InvalidState.into());
         };
-        if stop_touched(before.side, stop, bar) {
+        if stop_will_trigger {
             let trigger = orders.trigger_stop(order_id, stop, None)?;
             match trigger {
                 TriggerOutcome::Activated => triggered = true,
@@ -188,19 +206,23 @@ pub fn execute_bar(
         }
     }
 
-    let active = orders.get(order_id).ok_or(OrderError::UnknownOrder)?.clone();
+    let active = orders
+        .get(order_id)
+        .ok_or(OrderError::UnknownOrder)?
+        .clone();
     if !active.is_executable() {
         return Ok(no_fill(&active, triggered, uncertainty));
     }
 
     let (should_fill, raw_price) = match active.kind {
         OrderKind::Market => {
-            let base_price = if triggered {
-                stop_market_base_price(before.side, original_stop, bar)
+            let fill_price = if triggered {
+                precomputed_stop_market_price
+                    .expect("triggered market is converted from precomputed stop-market")
             } else {
-                bar.open
+                adverse_slippage(bar.open, active.side, config.market_slippage_atoms)?
             };
-            (true, adverse_slippage(base_price, active.side, config.market_slippage_atoms)?)
+            (true, fill_price)
         }
         OrderKind::Limit { limit_price } => {
             if !limit_touched(active.side, limit_price, bar) {
@@ -208,26 +230,17 @@ pub fn execute_bar(
             } else if triggered && matches!(original_kind, OrderKind::StopLimit { .. }) {
                 if stop_limit_same_bar_is_ambiguous(before.side, original_kind, bar) {
                     uncertainty.push(UncertaintyFlag::IntrabarAmbiguous);
-                    let choice = resolve_ambiguous(
-                        config.intrabar_policy,
-                        bar.event_seq,
-                        order_id.get(),
-                    );
+                    let choice =
+                        resolve_ambiguous(config.intrabar_policy, bar.event_seq, order_id.get());
                     (
                         choice == AmbiguousChoice::Favorable,
                         limit_fill_price(active.side, limit_price, bar.open),
                     )
                 } else {
-                    (
-                        true,
-                        limit_fill_price(active.side, limit_price, bar.open),
-                    )
+                    (true, limit_fill_price(active.side, limit_price, bar.open))
                 }
             } else {
-                (
-                    true,
-                    limit_fill_price(active.side, limit_price, bar.open),
-                )
+                (true, limit_fill_price(active.side, limit_price, bar.open))
             }
         }
         OrderKind::StopMarket { .. } | OrderKind::StopLimit { .. } => {
@@ -246,12 +259,11 @@ pub fn execute_bar(
             orders.record_fill(order_id, remaining)?;
             remaining
         }
-        TimeInForce::Ioc | TimeInForce::Fok => orders.execute_immediate(order_id, remaining)?.filled,
+        TimeInForce::Ioc | TimeInForce::Fok => {
+            orders.execute_immediate(order_id, remaining)?.filled
+        }
     };
-    let status = orders
-        .get(order_id)
-        .ok_or(OrderError::UnknownOrder)?
-        .status;
+    let status = orders.get(order_id).ok_or(OrderError::UnknownOrder)?.status;
     Ok(F0Outcome {
         order_id,
         filled,
@@ -267,11 +279,7 @@ pub fn execute_bar(
 /// The seeded form hashes a domain tag plus seed/event/order identifiers and therefore
 /// does not depend on process RNG, iteration ordering, or platform endianness.
 #[must_use]
-pub fn resolve_ambiguous(
-    policy: IntrabarPolicy,
-    event_seq: u64,
-    identity: u64,
-) -> AmbiguousChoice {
+pub fn resolve_ambiguous(policy: IntrabarPolicy, event_seq: u64, identity: u64) -> AmbiguousChoice {
     match policy {
         IntrabarPolicy::Pessimistic => AmbiguousChoice::Adverse,
         IntrabarPolicy::Optimistic => AmbiguousChoice::Favorable,
@@ -506,6 +514,32 @@ mod tests {
     }
 
     #[test]
+    fn stop_slippage_error_does_not_activate_order() {
+        let mut orders = OrderState::new();
+        let id = submit(
+            &mut orders,
+            Side::Buy,
+            OrderKind::StopMarket {
+                stop_price: PriceAtoms::new(105),
+            },
+            1,
+        );
+        assert_eq!(
+            execute_bar(
+                &mut orders,
+                id,
+                bar(2, 110, 115, 108, 112),
+                F0Config {
+                    intrabar_policy: IntrabarPolicy::Pessimistic,
+                    market_slippage_atoms: u64::MAX,
+                },
+            ),
+            Err(F0Error::PriceArithmetic)
+        );
+        assert_eq!(orders.get(id).unwrap().status, OrderStatus::Dormant);
+    }
+
+    #[test]
     fn pessimistic_ambiguous_stop_limit_triggers_but_does_not_same_bar_fill() {
         let mut orders = OrderState::new();
         let id = submit(
@@ -527,7 +561,10 @@ mod tests {
         assert!(outcome.triggered);
         assert_eq!(outcome.filled, QtyAtoms::new(0));
         assert_eq!(outcome.status, OrderStatus::Working);
-        assert_eq!(outcome.uncertainty, vec![UncertaintyFlag::IntrabarAmbiguous]);
+        assert_eq!(
+            outcome.uncertainty,
+            vec![UncertaintyFlag::IntrabarAmbiguous]
+        );
     }
 
     #[test]
@@ -554,7 +591,10 @@ mod tests {
         .unwrap();
         assert_eq!(outcome.filled, QtyAtoms::new(10));
         assert_eq!(outcome.fill_price, Some(PriceAtoms::new(100)));
-        assert_eq!(outcome.uncertainty, vec![UncertaintyFlag::IntrabarAmbiguous]);
+        assert_eq!(
+            outcome.uncertainty,
+            vec![UncertaintyFlag::IntrabarAmbiguous]
+        );
     }
 
     #[test]
