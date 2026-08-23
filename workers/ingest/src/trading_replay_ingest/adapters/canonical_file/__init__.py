@@ -6,7 +6,7 @@ import csv
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import pyarrow.parquet as pq
 
@@ -40,12 +40,15 @@ class ImportLimits:
     max_materialized_bytes: int = 256 * 1024 * 1024
 
     def __post_init__(self) -> None:
-        if min(
-            self.max_file_bytes,
-            self.max_rows,
-            self.max_columns,
-            self.max_materialized_bytes,
-        ) <= 0:
+        if (
+            min(
+                self.max_file_bytes,
+                self.max_rows,
+                self.max_columns,
+                self.max_materialized_bytes,
+            )
+            <= 0
+        ):
             raise ValueError("all import limits must be positive")
 
 
@@ -155,7 +158,11 @@ class CanonicalFileAdapter:
         self.limits = limits
 
     def _resolve(self, source_path: Path) -> Path:
-        candidate = (self.root / source_path).resolve() if not source_path.is_absolute() else source_path.resolve()
+        candidate = (
+            (self.root / source_path).resolve()
+            if not source_path.is_absolute()
+            else source_path.resolve()
+        )
         try:
             candidate.relative_to(self.root)
         except ValueError as error:
@@ -170,7 +177,9 @@ class CanonicalFileAdapter:
         size = self.source_path.stat().st_size
         if size > self.limits.max_file_bytes:
             raise ResourceLimitExceeded("source exceeds max_file_bytes")
-        return FetchPlan((FetchChunk("canonical-file", str(self.source_path), expected_bytes=size),))
+        return FetchPlan(
+            (FetchChunk("canonical-file", str(self.source_path), expected_bytes=size),)
+        )
 
     def fetch(self, chunk: FetchChunk) -> bytes:
         """Read the declared file, rejecting archives and size races."""
@@ -181,7 +190,9 @@ class CanonicalFileAdapter:
         if len(raw) > self.limits.max_file_bytes:
             raise ResourceLimitExceeded("source grew beyond max_file_bytes")
         if raw.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")):
-            raise ResourceLimitExceeded("archive containers are not accepted by canonical-file import")
+            raise ResourceLimitExceeded(
+                "archive containers are not accepted by canonical-file import"
+            )
         return raw
 
     def _rows_csv(self, raw: bytes) -> tuple[tuple[str, ...], list[dict[str, object]]]:
@@ -235,11 +246,15 @@ class CanonicalFileAdapter:
             for target, default in self.declaration.defaults:
                 _assign(event, target, default)
             for mapping in self.declaration.mappings:
-                _assign(event, mapping.target, _normalize_scalar(mapping.target, row[mapping.source]))
+                _assign(
+                    event, mapping.target, _normalize_scalar(mapping.target, row[mapping.source])
+                )
             if set(event) != _REQUIRED_TOP_LEVEL:
                 missing = sorted(_REQUIRED_TOP_LEVEL - set(event))
                 extra = sorted(set(event) - _REQUIRED_TOP_LEVEL)
-                raise SchemaRejected(f"canonical top-level fields mismatch; missing={missing}, extra={extra}")
+                raise SchemaRejected(
+                    f"canonical top-level fields mismatch; missing={missing}, extra={extra}"
+                )
             events.append(event)
         return NormalizedBatch(tuple(events))
 
