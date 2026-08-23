@@ -7,7 +7,9 @@ name = "trading-replay-ingest"
 version = "0.0.0"
 description = "Trading Replay Lab ingestion worker scaffold"
 requires-python = ">=3.14,<3.15"
-dependencies = []
+dependencies = [
+  "pyarrow==25.0.1",
+]
 
 [project.scripts]
 trading-replay-ingest = "trading_replay_ingest.cli:main"
