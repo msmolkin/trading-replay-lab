@@ -253,10 +253,13 @@ impl L2Book {
         if !self.enabled {
             return None;
         }
-        self.bids.iter().next_back().map(|(&price, &quantity)| DepthLevel {
-            price: PriceAtoms::new(price),
-            quantity: QtyAtoms::new(quantity),
-        })
+        self.bids
+            .iter()
+            .next_back()
+            .map(|(&price, &quantity)| DepthLevel {
+                price: PriceAtoms::new(price),
+                quantity: QtyAtoms::new(quantity),
+            })
     }
 
     /// Returns best visible ask while reconstruction is enabled.
@@ -265,10 +268,13 @@ impl L2Book {
         if !self.enabled {
             return None;
         }
-        self.asks.iter().next().map(|(&price, &quantity)| DepthLevel {
-            price: PriceAtoms::new(price),
-            quantity: QtyAtoms::new(quantity),
-        })
+        self.asks
+            .iter()
+            .next()
+            .map(|(&price, &quantity)| DepthLevel {
+                price: PriceAtoms::new(price),
+                quantity: QtyAtoms::new(quantity),
+            })
     }
 
     /// Returns displayed quantity at one exact price.
@@ -639,10 +645,7 @@ fn build_side(levels: Vec<DepthLevel>) -> Result<BTreeMap<i64, u64>, F2Error> {
     Ok(output)
 }
 
-fn validate_uncrossed(
-    bids: &BTreeMap<i64, u64>,
-    asks: &BTreeMap<i64, u64>,
-) -> Result<(), F2Error> {
+fn validate_uncrossed(bids: &BTreeMap<i64, u64>, asks: &BTreeMap<i64, u64>) -> Result<(), F2Error> {
     if let (Some((&bid, _)), Some((&ask, _))) = (bids.iter().next_back(), asks.iter().next()) {
         if bid >= ask {
             return Err(F2Error::InvalidBook);
@@ -800,7 +803,10 @@ mod tests {
             Err(F2Error::InvalidBook)
         );
         assert!(!book.is_enabled());
-        assert_eq!(book.quantity_at(BookSide::Bid, PriceAtoms::new(101)), QtyAtoms::new(0));
+        assert_eq!(
+            book.quantity_at(BookSide::Bid, PriceAtoms::new(101)),
+            QtyAtoms::new(0)
+        );
     }
 
     #[test]
@@ -809,16 +815,26 @@ mod tests {
         book.apply_snapshot(snapshot(2)).unwrap();
         let before = book.total_quantity(BookSide::Ask).unwrap();
         let mut orders = OrderState::new();
-        let id = submit(&mut orders, OrderKind::Market, TimeInForce::Gtc, Side::Buy, 6, 1);
-        let outcome = execute_taker(&mut orders, &mut book, id, SweepConfig::default()).unwrap();
-        assert_eq!(
-            outcome.levels,
-            vec![level_fill(101, 3), level_fill(102, 3)]
+        let id = submit(
+            &mut orders,
+            OrderKind::Market,
+            TimeInForce::Gtc,
+            Side::Buy,
+            6,
+            1,
         );
+        let outcome = execute_taker(&mut orders, &mut book, id, SweepConfig::default()).unwrap();
+        assert_eq!(outcome.levels, vec![level_fill(101, 3), level_fill(102, 3)]);
         assert_eq!(outcome.filled, QtyAtoms::new(6));
         assert_eq!(outcome.status, OrderStatus::Filled);
-        assert_eq!(book.quantity_at(BookSide::Ask, PriceAtoms::new(101)), QtyAtoms::new(0));
-        assert_eq!(book.quantity_at(BookSide::Ask, PriceAtoms::new(102)), QtyAtoms::new(1));
+        assert_eq!(
+            book.quantity_at(BookSide::Ask, PriceAtoms::new(101)),
+            QtyAtoms::new(0)
+        );
+        assert_eq!(
+            book.quantity_at(BookSide::Ask, PriceAtoms::new(102)),
+            QtyAtoms::new(1)
+        );
         let after = book.total_quantity(BookSide::Ask).unwrap();
         assert_eq!(before - after, u128::from(outcome.filled.get()));
     }
@@ -841,7 +857,10 @@ mod tests {
         let outcome = execute_taker(&mut orders, &mut book, id, SweepConfig::default()).unwrap();
         assert_eq!(outcome.levels, vec![level_fill(101, 3)]);
         assert_eq!(outcome.filled, QtyAtoms::new(3));
-        assert_eq!(book.quantity_at(BookSide::Ask, PriceAtoms::new(102)), QtyAtoms::new(4));
+        assert_eq!(
+            book.quantity_at(BookSide::Ask, PriceAtoms::new(102)),
+            QtyAtoms::new(4)
+        );
     }
 
     #[test]
@@ -850,7 +869,14 @@ mod tests {
         book.apply_snapshot(snapshot(2)).unwrap();
         let before = book.clone();
         let mut orders = OrderState::new();
-        let id = submit(&mut orders, OrderKind::Market, TimeInForce::Fok, Side::Buy, 20, 1);
+        let id = submit(
+            &mut orders,
+            OrderKind::Market,
+            TimeInForce::Fok,
+            Side::Buy,
+            20,
+            1,
+        );
         let outcome = execute_taker(&mut orders, &mut book, id, SweepConfig::default()).unwrap();
         assert_eq!(outcome.filled, QtyAtoms::new(0));
         assert_eq!(outcome.status, OrderStatus::Cancelled);
@@ -862,7 +888,14 @@ mod tests {
         let mut book = L2Book::new();
         book.apply_snapshot(snapshot(2)).unwrap();
         let mut orders = OrderState::new();
-        let id = submit(&mut orders, OrderKind::Market, TimeInForce::Ioc, Side::Buy, 10, 1);
+        let id = submit(
+            &mut orders,
+            OrderKind::Market,
+            TimeInForce::Ioc,
+            Side::Buy,
+            10,
+            1,
+        );
         let outcome = execute_taker(
             &mut orders,
             &mut book,
