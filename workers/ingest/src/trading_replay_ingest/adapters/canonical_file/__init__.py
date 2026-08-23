@@ -150,12 +150,12 @@ class CanonicalFileAdapter:
         root: Path,
         source_path: Path,
         declaration: ImportDeclaration,
-        limits: ImportLimits = ImportLimits(),
+        limits: ImportLimits | None = None,
     ) -> None:
         self.root = root.resolve()
         self.source_path = self._resolve(source_path)
         self.declaration = declaration
-        self.limits = limits
+        self.limits = ImportLimits() if limits is None else limits
 
     def _resolve(self, source_path: Path) -> Path:
         candidate = (
@@ -200,6 +200,8 @@ class CanonicalFileAdapter:
             text = raw.decode("utf-8", errors="strict")
         except UnicodeDecodeError as error:
             raise SchemaRejected("CSV must be UTF-8") from error
+        if len(raw) > self.limits.max_materialized_bytes:
+            raise ResourceLimitExceeded("CSV exceeds max_materialized_bytes")
         reader = csv.DictReader(io.StringIO(text, newline=""))
         if reader.fieldnames is None:
             raise SchemaRejected("CSV header is required")
@@ -217,11 +219,20 @@ class CanonicalFileAdapter:
     def _rows_parquet(self, raw: bytes) -> tuple[tuple[str, ...], list[dict[str, object]]]:
         if not raw.startswith(b"PAR1") or not raw.endswith(b"PAR1"):
             raise SchemaRejected("invalid Parquet magic")
-        table = pq.read_table(io.BytesIO(raw), use_threads=False)
-        if table.num_rows > self.limits.max_rows:
+        parquet = pq.ParquetFile(io.BytesIO(raw))
+        metadata = parquet.metadata
+        if metadata.num_rows > self.limits.max_rows:
             raise ResourceLimitExceeded("Parquet exceeds max_rows")
-        if table.num_columns > self.limits.max_columns:
+        if metadata.num_columns > self.limits.max_columns:
             raise ResourceLimitExceeded("Parquet exceeds max_columns")
+        declared_uncompressed = sum(
+            metadata.row_group(row_group).column(column).total_uncompressed_size
+            for row_group in range(metadata.num_row_groups)
+            for column in range(metadata.num_columns)
+        )
+        if declared_uncompressed > self.limits.max_materialized_bytes:
+            raise ResourceLimitExceeded("Parquet exceeds max_materialized_bytes")
+        table = parquet.read(use_threads=False)
         if table.nbytes > self.limits.max_materialized_bytes:
             raise ResourceLimitExceeded("Parquet exceeds max_materialized_bytes")
         rows = [{str(key): value for key, value in row.items()} for row in table.to_pylist()]
