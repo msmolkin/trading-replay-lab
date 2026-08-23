@@ -261,9 +261,7 @@ def validate_events(events: Sequence[Mapping[str, object]], policy: QualityPolic
         try:
             payload = _payload(event)
         except ValueError as error:
-            issues.append(
-                QualityIssue("INVALID_PAYLOAD", Severity.QUARANTINED, index, str(error))
-            )
+            issues.append(QualityIssue("INVALID_PAYLOAD", Severity.QUARANTINED, index, str(error)))
             continue
         issues.extend(_increment_issues(payload, policy, index))
 
@@ -272,9 +270,7 @@ def validate_events(events: Sequence[Mapping[str, object]], policy: QualityPolic
                 bids = _levels(payload, "bids")
                 asks = _levels(payload, "asks")
             except ValueError as error:
-                issues.append(
-                    QualityIssue("INVALID_BOOK", Severity.QUARANTINED, index, str(error))
-                )
+                issues.append(QualityIssue("INVALID_BOOK", Severity.QUARANTINED, index, str(error)))
             else:
                 book_ready = True
                 if (
