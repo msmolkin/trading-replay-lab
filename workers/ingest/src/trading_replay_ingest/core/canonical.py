@@ -1,6 +1,6 @@
 """Canonical JSON helpers for ingestion metadata and records."""
 
-import json
+from json import dumps
 
 
 type JsonValue = bool | int | str | list[JsonValue] | dict[str, JsonValue] | None
@@ -27,7 +27,7 @@ def require_json_value(value: object) -> JsonValue:
 def canonical_bytes(value: object) -> bytes:
     """Serialize canonical JSON deterministically as UTF-8 without insignificant space."""
     normalized = require_json_value(value)
-    text = json.dumps(
+    text = dumps(
         normalized,
         sort_keys=True,
         separators=(",", ":"),
