@@ -146,9 +146,7 @@ def test_service_commits_before_return_and_reveals_only_after_completion(tmp_pat
 
     with engine.begin() as connection:
         connection.execute(
-            update(sessions)
-            .where(sessions.c.session_id == "session-1")
-            .values(status="COMPLETED")
+            update(sessions).where(sessions.c.session_id == "session-1").values(status="COMPLETED")
         )
     proof = commitments_service.reveal_completed(
         session_id="session-1",
@@ -156,10 +154,13 @@ def test_service_commits_before_return_and_reveals_only_after_completion(tmp_pat
     )
     assert proof.selected_episode == prepared.selected_episode
     assert verify_completion_proof(setup(), episodes(), proof) == prepared.selected_episode
-    assert commitments_service.get_public(
-        session_id="session-1",
-        principal_id="principal-1",
-    ).revealed_secret_hex == proof.secret_hex
+    assert (
+        commitments_service.get_public(
+            session_id="session-1",
+            principal_id="principal-1",
+        ).revealed_secret_hex
+        == proof.secret_hex
+    )
 
 
 def test_duplicate_and_cross_principal_operations_fail(tmp_path: Path) -> None:
@@ -199,9 +200,7 @@ def test_tampered_sealed_secret_fails_closed(tmp_path: Path) -> None:
             .values(sealed_secret="AAAA")
         )
         connection.execute(
-            update(sessions)
-            .where(sessions.c.session_id == "session-1")
-            .values(status="COMPLETED")
+            update(sessions).where(sessions.c.session_id == "session-1").values(status="COMPLETED")
         )
     with pytest.raises(CommitmentVerificationError):
         commitments_service.reveal_completed(
