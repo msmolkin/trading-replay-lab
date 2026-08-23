@@ -1,11 +1,7 @@
 export type SessionMode = "HISTORICAL" | "RANDOM";
 export type ExecutionTier = "F0" | "F0T" | "F1" | "F2" | "F3";
 export type VisibilityMode = "ABSOLUTE" | "RELATIVE" | "HIDDEN_CALENDAR";
-export type RedistributionClass =
-  | "REDISTRIBUTABLE"
-  | "USER_LICENSED"
-  | "RESTRICTED"
-  | "UNKNOWN";
+export type RedistributionClass = "REDISTRIBUTABLE" | "USER_LICENSED" | "RESTRICTED" | "UNKNOWN";
 export type DataCapability =
   | "BARS"
   | "TRADES"
@@ -426,5 +422,8 @@ function sortedUnique<T extends string>(values: readonly T[]): readonly T[] {
 
 function isSortedUnique<T extends string>(values: readonly T[]): boolean {
   const canonical = sortedUnique(values);
-  return canonical.length === values.length && canonical.every((value, index) => value === values[index]);
+  return (
+    canonical.length === values.length &&
+    canonical.every((value, index) => value === values[index])
+  );
 }
