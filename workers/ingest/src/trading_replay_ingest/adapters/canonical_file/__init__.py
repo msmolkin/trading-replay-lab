@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import pyarrow.parquet as pq
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
 from trading_replay_ingest.core import FetchChunk, FetchPlan, FetchRequest, NormalizedBatch
 from trading_replay_ingest.core.canonical import JsonValue
