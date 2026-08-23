@@ -4,3 +4,4 @@
 // asserts an internal precomputation invariant established earlier in that same transition.
 #[allow(clippy::missing_panics_doc, clippy::too_many_lines)]
 pub mod f0;
+pub mod f1;
