@@ -8,10 +8,14 @@ pub type Hash32 = [u8; 32];
 /// All-zero sentinel used before the first chained event.
 pub const ZERO_HASH: Hash32 = [0; 32];
 
+// These values are the SHA-256 specification constants; keeping the published hexadecimal
+// spelling makes auditing them against FIPS 180-4 substantially easier than digit-grouping them.
+#[allow(clippy::unreadable_literal)]
 const INITIAL: [u32; 8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 
+#[allow(clippy::unreadable_literal)]
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -24,7 +28,12 @@ const K: [u32; 64] = [
 ];
 
 /// Computes SHA-256 over exactly the supplied bytes.
+///
+/// # Panics
+/// Panics only if an in-memory slice cannot be represented as the SHA-256 64-bit bit length.
+/// That requires a slice larger than the addressable memory of supported 64-bit targets.
 #[must_use]
+#[allow(clippy::many_single_char_names)]
 pub fn sha256(input: &[u8]) -> Hash32 {
     let byte_len = u64::try_from(input.len()).expect("in-memory slice length exceeds u64");
     let bit_len = byte_len
@@ -39,7 +48,7 @@ pub fn sha256(input: &[u8]) -> Hash32 {
     padded.extend_from_slice(&bit_len.to_be_bytes());
 
     let mut state = INITIAL;
-    for chunk in padded.chunks_exact(64) {
+    for chunk in padded.as_chunks::<64>().0 {
         let mut words = [0_u32; 64];
         for (index, word) in words.iter_mut().take(16).enumerate() {
             let offset = index * 4;
