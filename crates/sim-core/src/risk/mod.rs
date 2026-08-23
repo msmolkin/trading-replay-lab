@@ -515,8 +515,16 @@ fn working_order_expansion_atoms(
     }
 
     let close_capacity = u128::from(position_atoms.unsigned_abs());
-    let buy_close_capacity = if position_atoms < 0 { close_capacity } else { 0 };
-    let sell_close_capacity = if position_atoms > 0 { close_capacity } else { 0 };
+    let buy_close_capacity = if position_atoms < 0 {
+        close_capacity
+    } else {
+        0
+    };
+    let sell_close_capacity = if position_atoms > 0 {
+        close_capacity
+    } else {
+        0
+    };
     let buy_expansion = buys.saturating_sub(buy_close_capacity);
     let sell_expansion = sells.saturating_sub(sell_close_capacity);
     let expansion = buy_expansion.max(sell_expansion);
