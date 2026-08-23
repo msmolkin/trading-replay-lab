@@ -1,5 +1,5 @@
 # Fixtures
 
-Only tiny synthetic or clearly redistributable data belongs here. Each scenario directory must contain source/event inputs, ruleset, commands, expected domain events, expected final state/hash, and `manifest.json` describing provenance and generation.
+Only tiny synthetic or explicitly redistributable inputs belong here. `micro/manifest.json` records provenance, license, hashes, row counts, and the edge cases covered by the deterministic generator in `tools/fixture-generator/`.
 
-Do not copy provider sample files into this directory without recording an explicit redistribution basis.
+Do not place raw provider downloads, licensed market data, credentials, or large Parquet/database files in this tree.
