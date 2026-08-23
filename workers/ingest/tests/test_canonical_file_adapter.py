@@ -37,16 +37,22 @@ def request() -> FetchRequest:
 
 
 def declaration(format_name: str) -> ImportDeclaration:
-    common = {
-        "mappings": MAPPINGS,
-        "defaults": DEFAULTS,
-        "capabilities": ("TRADES",),
-        "provenance": "unit-test user fixture",
-    }
     if format_name == "csv":
-        return ImportDeclaration(format="csv", **common)
+        return ImportDeclaration(
+            format="csv",
+            mappings=MAPPINGS,
+            defaults=DEFAULTS,
+            capabilities=("TRADES",),
+            provenance="unit-test user fixture",
+        )
     if format_name == "parquet":
-        return ImportDeclaration(format="parquet", **common)
+        return ImportDeclaration(
+            format="parquet",
+            mappings=MAPPINGS,
+            defaults=DEFAULTS,
+            capabilities=("TRADES",),
+            provenance="unit-test user fixture",
+        )
     raise AssertionError(f"unsupported test format: {format_name}")
 
 
