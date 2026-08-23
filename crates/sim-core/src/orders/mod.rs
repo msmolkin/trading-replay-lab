@@ -108,7 +108,7 @@ impl OrderStatus {
     /// Returns whether no further mutation is legal.
     #[must_use]
     pub const fn is_terminal(self) -> bool {
-        matches!(Self::Filled | Self::Cancelled | Self::Rejected, self)
+        matches!(self, Self::Filled | Self::Cancelled | Self::Rejected)
     }
 }
 
@@ -341,7 +341,13 @@ impl OrderState {
         quote: Option<TopOfBook>,
     ) -> Result<SubmitOutcome, OrderError> {
         Self::validate_request(&request)?;
-        Self::validate_liquidity_constraint(request.side, request.kind, request.post_only, request.marketable_only, quote)?;
+        Self::validate_liquidity_constraint(
+            request.side,
+            request.kind,
+            request.post_only,
+            request.marketable_only,
+            quote,
+        )?;
 
         let requested_quantity = request.quantity;
         let accepted_quantity = if request.reduce_only {
@@ -480,7 +486,11 @@ impl OrderState {
     ///
     /// # Errors
     /// Returns a state/quantity error without mutation.
-    pub fn record_fill(&mut self, id: OrderId, quantity: QtyAtoms) -> Result<OrderStatus, OrderError> {
+    pub fn record_fill(
+        &mut self,
+        id: OrderId,
+        quantity: QtyAtoms,
+    ) -> Result<OrderStatus, OrderError> {
         let order = self.orders.get_mut(&id).ok_or(OrderError::UnknownOrder)?;
         if !order.is_executable() {
             return Err(OrderError::InvalidState);
@@ -619,7 +629,12 @@ impl OrderState {
             return Err(OrderError::ConflictingLiquidityConstraints);
         }
         Self::validate_kind(request.kind)?;
-        if request.post_only && matches!(request.kind, OrderKind::Market | OrderKind::StopMarket { .. }) {
+        if request.post_only
+            && matches!(
+                request.kind,
+                OrderKind::Market | OrderKind::StopMarket { .. }
+            )
+        {
             return Err(OrderError::PostOnlyMarketOrder);
         }
         Ok(())
@@ -711,7 +726,11 @@ impl OrderState {
         Ok(QtyAtoms::new(requested.get().min(available)))
     }
 
-    fn apply_fill(order: &mut Order, quantity: QtyAtoms, allow_fok: bool) -> Result<(), OrderError> {
+    fn apply_fill(
+        order: &mut Order,
+        quantity: QtyAtoms,
+        allow_fok: bool,
+    ) -> Result<(), OrderError> {
         if quantity.get() == 0 {
             return Ok(());
         }
@@ -766,19 +785,34 @@ mod tests {
     #[test]
     fn lifecycle_and_quantity_conservation() {
         let mut state = OrderState::new();
-        let id = state.submit(limit(Side::Buy, 100, TimeInForce::Gtc), 0, None).unwrap().order_id;
+        let id = state
+            .submit(limit(Side::Buy, 100, TimeInForce::Gtc), 0, None)
+            .unwrap()
+            .order_id;
         assert_eq!(state.get(id).unwrap().status, OrderStatus::Working);
-        assert_eq!(state.record_fill(id, QtyAtoms::new(4)).unwrap(), OrderStatus::PartiallyFilled);
+        assert_eq!(
+            state.record_fill(id, QtyAtoms::new(4)).unwrap(),
+            OrderStatus::PartiallyFilled
+        );
         let order = state.get(id).unwrap();
-        assert_eq!(order.filled.get() + order.remaining().get(), order.quantity.get());
-        assert_eq!(state.record_fill(id, QtyAtoms::new(6)).unwrap(), OrderStatus::Filled);
+        assert_eq!(
+            order.filled.get() + order.remaining().get(),
+            order.quantity.get()
+        );
+        assert_eq!(
+            state.record_fill(id, QtyAtoms::new(6)).unwrap(),
+            OrderStatus::Filled
+        );
         assert_eq!(state.cancel(id), Err(OrderError::InvalidState));
     }
 
     #[test]
     fn replace_preserves_fills_and_identity() {
         let mut state = OrderState::new();
-        let id = state.submit(limit(Side::Sell, 105, TimeInForce::Gtc), 0, None).unwrap().order_id;
+        let id = state
+            .submit(limit(Side::Sell, 105, TimeInForce::Gtc), 0, None)
+            .unwrap()
+            .order_id;
         state.record_fill(id, QtyAtoms::new(3)).unwrap();
         let total = state
             .replace(
@@ -793,6 +827,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        let kind = state.get(id).unwrap().kind;
         let order = state.get(id).unwrap();
         assert_eq!(total.get(), 8);
         assert_eq!(order.filled.get(), 3);
@@ -803,7 +838,7 @@ mod tests {
                 id,
                 ReplaceOrder {
                     quantity: QtyAtoms::new(2),
-                    kind: order.kind,
+                    kind,
                 },
                 0,
                 None,
@@ -836,7 +871,10 @@ mod tests {
         let mut state = OrderState::new();
         let mut request = limit(Side::Buy, 100, TimeInForce::Gtc);
         request.reduce_only = true;
-        assert_eq!(state.submit(request, 5, None), Err(OrderError::ReduceOnlyWrongSide));
+        assert_eq!(
+            state.submit(request, 5, None),
+            Err(OrderError::ReduceOnlyWrongSide)
+        );
         assert_eq!(state.iter().count(), 0);
     }
 
@@ -845,7 +883,10 @@ mod tests {
         let mut state = OrderState::new();
         let mut post = limit(Side::Buy, 101, TimeInForce::Gtc);
         post.post_only = true;
-        assert_eq!(state.submit(post.clone(), 0, Some(quote())), Err(OrderError::PostOnlyWouldTake));
+        assert_eq!(
+            state.submit(post.clone(), 0, Some(quote())),
+            Err(OrderError::PostOnlyWouldTake)
+        );
         post.kind = OrderKind::Limit {
             limit_price: PriceAtoms::new(100),
         };
@@ -866,19 +907,28 @@ mod tests {
     #[test]
     fn ioc_and_fok_are_atomic() {
         let mut state = OrderState::new();
-        let ioc = state.submit(limit(Side::Buy, 101, TimeInForce::Ioc), 0, None).unwrap().order_id;
+        let ioc = state
+            .submit(limit(Side::Buy, 101, TimeInForce::Ioc), 0, None)
+            .unwrap()
+            .order_id;
         let ioc_result = state.execute_immediate(ioc, QtyAtoms::new(4)).unwrap();
         assert_eq!(ioc_result.filled.get(), 4);
         assert_eq!(ioc_result.status, OrderStatus::Cancelled);
         assert_eq!(state.get(ioc).unwrap().filled.get(), 4);
 
-        let fok = state.submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None).unwrap().order_id;
+        let fok = state
+            .submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None)
+            .unwrap()
+            .order_id;
         let failed = state.execute_immediate(fok, QtyAtoms::new(9)).unwrap();
         assert_eq!(failed.filled.get(), 0);
         assert_eq!(failed.status, OrderStatus::Cancelled);
         assert_eq!(state.get(fok).unwrap().filled.get(), 0);
 
-        let full = state.submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None).unwrap().order_id;
+        let full = state
+            .submit(limit(Side::Buy, 101, TimeInForce::Fok), 0, None)
+            .unwrap()
+            .order_id;
         let filled = state.execute_immediate(full, QtyAtoms::new(10)).unwrap();
         assert_eq!(filled.status, OrderStatus::Filled);
     }
@@ -894,15 +944,24 @@ mod tests {
         stop.post_only = true;
         let id = state.submit(stop, 0, None).unwrap().order_id;
         assert_eq!(
-            state.trigger_stop(id, PriceAtoms::new(104), Some(quote())).unwrap(),
+            state
+                .trigger_stop(id, PriceAtoms::new(104), Some(quote()))
+                .unwrap(),
             TriggerOutcome::NotTriggered
         );
         assert_eq!(
-            state.trigger_stop(id, PriceAtoms::new(105), Some(quote())).unwrap(),
+            state
+                .trigger_stop(id, PriceAtoms::new(105), Some(quote()))
+                .unwrap(),
             TriggerOutcome::Activated
         );
         let order = state.get(id).unwrap();
-        assert_eq!(order.kind, OrderKind::Limit { limit_price: PriceAtoms::new(100) });
+        assert_eq!(
+            order.kind,
+            OrderKind::Limit {
+                limit_price: PriceAtoms::new(100)
+            }
+        );
         assert_eq!(order.status, OrderStatus::Working);
     }
 
@@ -926,7 +985,9 @@ mod tests {
         };
         let id = state.submit(request, 0, None).unwrap().order_id;
         assert_eq!(
-            state.trigger_stop(id, PriceAtoms::new(101), Some(quote())).unwrap(),
+            state
+                .trigger_stop(id, PriceAtoms::new(101), Some(quote()))
+                .unwrap(),
             TriggerOutcome::Rejected
         );
         assert_eq!(state.get(id).unwrap().status, OrderStatus::Rejected);
@@ -937,7 +998,10 @@ mod tests {
         let mut state = OrderState::new();
         let mut request = limit(Side::Buy, 100, TimeInForce::Gtc);
         request.quantity = QtyAtoms::new(0);
-        assert_eq!(state.submit(request, 0, None), Err(OrderError::ZeroQuantity));
+        assert_eq!(
+            state.submit(request, 0, None),
+            Err(OrderError::ZeroQuantity)
+        );
         assert_eq!(state.iter().count(), 0);
     }
 }
