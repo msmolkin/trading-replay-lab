@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -126,7 +127,7 @@ def test_canonical_writer_rejects_float(tmp_path: Path) -> None:
     def bad_normalize(chunk: FetchChunk, raw: bytes) -> NormalizedBatch:
         batch = original(chunk, raw)
         event = dict(batch.events[0])
-        event["payload"] = {"price_atoms": 1.5}
+        event["payload"] = cast(JsonValue, {"price_atoms": 1.5})
         return NormalizedBatch((event,))
 
     adapter.normalize = bad_normalize  # type: ignore[method-assign]
