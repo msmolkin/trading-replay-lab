@@ -1,0 +1,20 @@
+{
+  "name": "trading-replay-lab",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": "24.19.0"
+  },
+  "scripts": {
+    "format": "biome format --write apps/web packages/contracts",
+    "format:check": "biome format apps/web packages/contracts",
+    "lint": "biome lint apps/web packages/contracts",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "typescript": "6.0.3"
+  }
+}

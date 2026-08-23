@@ -39,6 +39,18 @@ This repository currently contains the implementation-ready specification and pa
 
 These choices are decisions for the first implementation, not invitations for each agent to select a different stack. Propose changes through an ADR.
 
+## Development bootstrap
+
+The repository pins Node, Python, and Rust in `.node-version`, `.python-version`, and `rust-toolchain.toml`. Install those exact language versions plus GNU Make; Node's Corepack installs the pinned pnpm release during bootstrap.
+
+From a clean clone, the single bootstrap command is:
+
+```bash
+make bootstrap
+```
+
+It verifies the pinned language versions, installs JavaScript and Python dependencies, fetches the Rust workspace, then runs every empty-stack formatter check, linter, type check, and test. After bootstrap, rerun the complete suite with `make check`; use `make format` to apply formatting.
+
 ## Intended modes
 
 - `practice`: timestamps and instrument identity are visible.
@@ -50,7 +62,7 @@ The game is simulation and research software, not a broker, exchange, or promise
 
 ## Status
 
-Specification complete enough for implementation. Begin with `M0` in [tasks/README.md](tasks/README.md); do not start UI trading controls before the contracts and golden simulator scenarios land.
+Implementation is underway from Milestone 0. The repository bootstrap is the first dependency for contracts, CI, simulator, ingestion, API, and web work; follow [tasks/README.md](tasks/README.md) for the dependency graph.
 
 ## License
 

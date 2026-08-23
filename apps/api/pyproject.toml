@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=80,<81"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trading-replay-api"
+version = "0.0.0"
+description = "Trading Replay Lab API scaffold"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn==0.52.2",
+]
+
+[project.scripts]
+trading-replay-api = "trading_replay_api.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
