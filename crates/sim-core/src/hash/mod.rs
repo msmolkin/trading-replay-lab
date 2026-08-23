@@ -35,9 +35,10 @@ const K: [u32; 64] = [
 /// Computes SHA-256 over exactly the supplied bytes.
 #[must_use]
 pub fn sha256(input: &[u8]) -> Hash32 {
-    let bit_len = u64::try_from(input.len())
-        .unwrap_or(u64::MAX)
-        .wrapping_mul(8);
+    let byte_len = u64::try_from(input.len()).expect("in-memory slice length exceeds u64");
+    let bit_len = byte_len
+        .checked_mul(8)
+        .expect("SHA-256 input bit length exceeds u64");
     let mut padded = Vec::with_capacity(input.len().saturating_add(72));
     padded.extend_from_slice(input);
     padded.push(0x80);
@@ -154,7 +155,8 @@ impl CanonicalWriter {
     /// # Panics
     /// Panics only on platforms where an in-memory byte slice can exceed `u64::MAX` bytes.
     pub fn bytes(&mut self, value: &[u8]) {
-        let length = u64::try_from(value.len()).expect("in-memory slice length exceeds u64");
+        let length =
+            u64::try_from(value.len()).expect("in-memory slice length exceeds u64");
         self.u64(length);
         self.bytes.extend_from_slice(value);
     }
