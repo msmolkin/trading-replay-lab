@@ -1,6 +1,7 @@
 packages:
   - "apps/web"
   - "packages/contracts"
+  - "packages/ui"
 
 minimumReleaseAge: 1440
 
