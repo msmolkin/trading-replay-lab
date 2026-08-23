@@ -64,6 +64,16 @@ The game is simulation and research software, not a broker, exchange, or promise
 
 Implementation is underway from Milestone 0. The repository bootstrap is the first dependency for contracts, CI, simulator, ingestion, API, and web work; follow [tasks/README.md](tasks/README.md) for the dependency graph.
 
+## Reusable Codex skill
+
+This repository also contains [`$build-agent-ready-repo`](.agents/skills/build-agent-ready-repo/SKILL.md), a reusable Codex skill for turning a rough product idea into a specification repository that many coding agents can implement in parallel. Codex discovers it automatically while working in this repository. Invoke it explicitly with:
+
+```text
+$build-agent-ready-repo Turn this idea into an implementation-ready public repository: ...
+```
+
+For use across unrelated local repositories, copy or symlink the skill directory into `$HOME/.agents/skills/`. The skill is instruction-only and does not grant itself permission to publish repositories or create paid resources.
+
 ## License
 
 Code and original documentation are MIT-licensed. Third-party data remains subject to its provider and venue terms. See [LICENSE](LICENSE) and [docs/data-providers.md](docs/data-providers.md).

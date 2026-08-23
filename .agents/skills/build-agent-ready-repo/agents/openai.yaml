@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Agent-Ready Repository"
+  short_description: "Turn product ideas into parallel-ready repositories"
+  default_prompt: "Use $build-agent-ready-repo to turn this idea into an implementation-ready repository for many coding agents."
