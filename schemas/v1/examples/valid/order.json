@@ -1,0 +1,16 @@
+{
+  "command_type": "ORDER",
+  "command_id": "cmd-1",
+  "session_id": "session-1",
+  "instrument_id": "binance:BTCUSDT:spot",
+  "side": "BUY",
+  "quantity_atoms": "250000",
+  "order_type": "LIMIT",
+  "limit_price_atoms": "4200000",
+  "time_in_force": "GTC",
+  "reduce_only": false,
+  "post_only": true,
+  "marketable_only": false,
+  "submitted_at_event_seq": "42",
+  "client_idempotency_key": "order-1"
+}

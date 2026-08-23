@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/order.schema.json",
+  "title": "OrderCommand",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command_type", "command_id", "session_id", "instrument_id", "side", "quantity_atoms",
+    "order_type", "time_in_force", "reduce_only", "post_only", "marketable_only",
+    "submitted_at_event_seq", "client_idempotency_key"
+  ],
+  "properties": {
+    "command_type": {"const": "ORDER"},
+    "command_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "session_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "instrument_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "side": {"$ref": "common.schema.json#/$defs/Side"},
+    "quantity_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+    "order_type": {"type": "string", "enum": ["MARKET", "LIMIT", "STOP_MARKET", "STOP_LIMIT"]},
+    "limit_price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "stop_price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "time_in_force": {"type": "string", "enum": ["GTC", "IOC", "FOK"]},
+    "reduce_only": {"type": "boolean"},
+    "post_only": {"type": "boolean"},
+    "marketable_only": {"type": "boolean"},
+    "slippage_cap_bps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "submitted_at_event_seq": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "client_idempotency_key": {"type": "string", "minLength": 1, "maxLength": 200},
+    "target_position_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "quote_event_id": {"$ref": "common.schema.json#/$defs/Identifier"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"order_type": {"const": "MARKET"}}, "required": ["order_type"]},
+      "then": {
+        "not": {"anyOf": [{"required": ["limit_price_atoms"]}, {"required": ["stop_price_atoms"]}]},
+        "properties": {"post_only": {"const": false}}
+      }
+    },
+    {
+      "if": {"properties": {"order_type": {"const": "LIMIT"}}, "required": ["order_type"]},
+      "then": {"required": ["limit_price_atoms"], "not": {"required": ["stop_price_atoms"]}}
+    },
+    {
+      "if": {"properties": {"order_type": {"const": "STOP_MARKET"}}, "required": ["order_type"]},
+      "then": {"required": ["stop_price_atoms"], "not": {"required": ["limit_price_atoms"]}, "properties": {"post_only": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"order_type": {"const": "STOP_LIMIT"}}, "required": ["order_type"]},
+      "then": {"required": ["stop_price_atoms", "limit_price_atoms"]}
+    },
+    {
+      "not": {
+        "properties": {"post_only": {"const": true}, "marketable_only": {"const": true}},
+        "required": ["post_only", "marketable_only"]
+      }
+    }
+  ]
+}

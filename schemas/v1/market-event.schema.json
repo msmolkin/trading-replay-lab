@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/market-event.schema.json",
+  "title": "MarketEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_id", "instrument_id", "venue_id", "ts_event_ns",
+    "canonical_tie_breaker", "kind", "payload", "quality_flags"
+  ],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+    "dataset_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "instrument_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "venue_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "ts_event_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "ts_recv_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "source_sequence": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "canonical_tie_breaker": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+    "source_event_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+    "kind": {
+      "type": "string",
+      "enum": [
+        "TRADE", "BBO", "BOOK_SNAPSHOT_L2", "BOOK_DELTA_L2", "ORDER_EVENT_L3", "BAR",
+        "MARK_PRICE", "INDEX_PRICE", "FUNDING_RATE", "FUNDING_PAYMENT_TIME", "OPEN_INTEREST",
+        "LIQUIDATION_PRINT", "DEFINITION", "CORPORATE_ACTION", "SESSION_STATUS", "SETTLEMENT"
+      ]
+    },
+    "payload": {"$ref": "#/$defs/MarketPayload"},
+    "quality_flags": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/QualityFlag"}, "uniqueItems": true}
+  },
+  "$defs": {
+    "PriceQty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["price_atoms", "qty_atoms"],
+      "properties": {
+        "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "qty_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"}
+      }
+    },
+    "TradePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["price_atoms", "qty_atoms", "aggressor_side"],
+      "properties": {
+        "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "qty_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+        "aggressor_side": {"type": "string", "enum": ["BUY", "SELL", "UNKNOWN"]},
+        "trade_id": {"$ref": "common.schema.json#/$defs/Identifier"}
+      }
+    },
+    "BboPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bid_price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "bid_qty_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "ask_price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "ask_qty_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"}
+      },
+      "anyOf": [{"required": ["bid_price_atoms"]}, {"required": ["ask_price_atoms"]}]
+    },
+    "BarPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interval", "open_atoms", "high_atoms", "low_atoms", "close_atoms", "base_volume_atoms", "complete"],
+      "properties": {
+        "interval": {"type": "string", "minLength": 1},
+        "open_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "high_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "low_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "close_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "base_volume_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "quote_volume_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "trade_count": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "complete": {"type": "boolean"}
+      }
+    },
+    "BookSnapshotL2Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bids", "asks", "scope"],
+      "properties": {
+        "bids": {"type": "array", "items": {"$ref": "#/$defs/PriceQty"}},
+        "asks": {"type": "array", "items": {"$ref": "#/$defs/PriceQty"}},
+        "scope": {"type": "string", "enum": ["FULL", "TOP_N"]},
+        "depth": {"type": "integer", "minimum": 1}
+      }
+    },
+    "BookDeltaL2Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["side", "price_atoms", "new_qty_atoms", "action"],
+      "properties": {
+        "side": {"$ref": "common.schema.json#/$defs/Side"},
+        "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "new_qty_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "action": {"type": "string", "enum": ["UPSERT", "DELETE"]}
+      }
+    },
+    "OrderEventL3Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order_id", "side", "action"],
+      "properties": {
+        "order_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "side": {"$ref": "common.schema.json#/$defs/Side"},
+        "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "qty_atoms": {"$ref": "common.schema.json#/$defs/WireUInt64"},
+        "action": {"type": "string", "enum": ["ADD", "MODIFY", "CANCEL", "FILL", "CLEAR"]}
+      }
+    },
+    "ScalarPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value_atoms"],
+      "properties": {
+        "value_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
+        "unit": {"type": "string"}
+      }
+    },
+    "MarketPayload": {
+      "anyOf": [
+        {"$ref": "#/$defs/TradePayload"}, {"$ref": "#/$defs/BboPayload"}, {"$ref": "#/$defs/BarPayload"},
+        {"$ref": "#/$defs/BookSnapshotL2Payload"}, {"$ref": "#/$defs/BookDeltaL2Payload"},
+        {"$ref": "#/$defs/OrderEventL3Payload"}, {"$ref": "#/$defs/ScalarPayload"},
+        {"$ref": "common.schema.json#/$defs/JsonObject"}
+      ]
+    }
+  }
+}

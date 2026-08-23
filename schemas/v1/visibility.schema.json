@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trading-replay-lab.dev/schemas/v1/visibility.schema.json",
+  "title": "SessionVisibility",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "phase", "revealed_through_ns", "permitted_intervals", "identity_visibility", "calendar_visibility", "order_flow_visibility", "generation"],
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
+    "phase": {"type": "string", "enum": ["SETUP", "ACTIVE", "COMPLETED"]},
+    "revealed_through_ns": {"$ref": "common.schema.json#/$defs/WireInt64"},
+    "permitted_intervals": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "identity_visibility": {"type": "string", "enum": ["VISIBLE", "HIDDEN_UNTIL_COMPLETE"]},
+    "calendar_visibility": {"type": "string", "enum": ["ABSOLUTE", "RELATIVE", "HIDDEN_UNTIL_COMPLETE"]},
+    "order_flow_visibility": {"type": "string", "enum": ["NONE", "TRADES", "BBO", "DEPTH", "MBO"]},
+    "generation": {"$ref": "common.schema.json#/$defs/WireUInt64"}
+  }
+}

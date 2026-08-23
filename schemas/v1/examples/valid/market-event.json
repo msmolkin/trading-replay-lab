@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_id": "dataset-1",
+  "instrument_id": "binance:BTCUSDT:spot",
+  "venue_id": "binance",
+  "ts_event_ns": "1704067200123456789",
+  "source_sequence": "9007199254740993",
+  "canonical_tie_breaker": "0",
+  "source_event_id": "trade-1",
+  "kind": "TRADE",
+  "payload": {
+    "price_atoms": "4200000",
+    "qty_atoms": "10000",
+    "aggressor_side": "BUY",
+    "trade_id": "trade-1"
+  },
+  "quality_flags": []
+}
