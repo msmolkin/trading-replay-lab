@@ -195,11 +195,10 @@ fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i
     }
     let sign = if numerator.is_negative() { -1 } else { 1 };
     let rounded = match rounding {
-        Rounding::TowardZero => Some(quotient),
         Rounding::AwayFromZero => quotient.checked_add(sign),
         Rounding::Floor if numerator.is_negative() => quotient.checked_sub(1),
         Rounding::Ceiling if numerator.is_positive() => quotient.checked_add(1),
-        Rounding::Floor | Rounding::Ceiling => Some(quotient),
+        Rounding::TowardZero | Rounding::Floor | Rounding::Ceiling => Some(quotient),
         Rounding::NearestTiesAway => {
             let doubled = remainder
                 .abs()
@@ -387,7 +386,7 @@ mod tests {
             state = state
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1);
-            let price = (state % 10_000_000 + 1) as i64;
+            let price = (state % 10_000_000 + 1).cast_signed();
             state = state
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1);
@@ -407,7 +406,7 @@ mod tests {
             .get();
 
             let mut reference = BigUnsigned::from_u64(qty);
-            reference.mul_u64(price as u64);
+            reference.mul_u64(price.cast_unsigned());
             reference.mul_u64(multiplier);
             reference.div_u64(divisor);
             let expected = reference.to_u64().unwrap();
