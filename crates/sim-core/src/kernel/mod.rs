@@ -86,10 +86,16 @@ impl fmt::Display for KernelError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InputSequence { expected, actual } => {
-                write!(formatter, "input sequence mismatch: expected {expected}, received {actual}")
+                write!(
+                    formatter,
+                    "input sequence mismatch: expected {expected}, received {actual}"
+                )
             }
             Self::StateVersion { expected, actual } => {
-                write!(formatter, "state version mismatch: expected {expected}, received {actual}")
+                write!(
+                    formatter,
+                    "state version mismatch: expected {expected}, received {actual}"
+                )
             }
             Self::InvalidSnapshot => formatter.write_str("invalid kernel snapshot"),
             Self::CounterOverflow => formatter.write_str("kernel counter overflow"),
@@ -267,7 +273,10 @@ mod tests {
         let inputs = [input(0), input(1), input(2)];
         let mut left = Kernel::new();
         let mut right = Kernel::new();
-        assert_eq!(left.apply_batch(&inputs).unwrap(), right.apply_batch(&inputs).unwrap());
+        assert_eq!(
+            left.apply_batch(&inputs).unwrap(),
+            right.apply_batch(&inputs).unwrap()
+        );
         assert_eq!(left.snapshot(), right.snapshot());
     }
 
@@ -289,10 +298,16 @@ mod tests {
     fn invalid_input_is_fail_closed() {
         let mut kernel = Kernel::new();
         let before = kernel.snapshot();
-        let wrong_sequence = InputEnvelope { input_seq: 1, ..input(0) };
+        let wrong_sequence = InputEnvelope {
+            input_seq: 1,
+            ..input(0)
+        };
         assert_eq!(
             kernel.apply(&wrong_sequence),
-            Err(KernelError::InputSequence { expected: 0, actual: 1 })
+            Err(KernelError::InputSequence {
+                expected: 0,
+                actual: 1
+            })
         );
         assert_eq!(kernel.snapshot(), before);
 
@@ -302,7 +317,10 @@ mod tests {
         };
         assert_eq!(
             kernel.apply(&stale),
-            Err(KernelError::StateVersion { expected: 0, actual: 9 })
+            Err(KernelError::StateVersion {
+                expected: 0,
+                actual: 9
+            })
         );
         assert_eq!(kernel.snapshot(), before);
     }
