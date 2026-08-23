@@ -137,6 +137,8 @@ class SetupRequest:
             raise ValueError("instrument_id is required")
         _validate_sha256(self.manifest_hash, "manifest_hash")
         _validate_i64(self.play_start_ns, "play_start_ns")
+        _validate_i64(self.warmup_ns, "warmup_ns")
+        _validate_i64(self.duration_ns, "duration_ns")
         if self.warmup_ns < 0:
             raise ValueError("warmup_ns cannot be negative")
         if self.duration_ns <= 0:
@@ -207,7 +209,8 @@ class CommittedSetup:
             duration_ns=_positive_decimal_field(payload, "duration_ns"),
             execution_tier=ExecutionTier(_string_field(payload, "execution_tier")),
             required_capabilities=frozenset(
-                DataCapability(value) for value in _string_list_field(payload, "required_capabilities")
+                DataCapability(value)
+                for value in _string_list_field(payload, "required_capabilities")
             ),
             allowed_redistribution=frozenset(
                 RedistributionClass(value)
