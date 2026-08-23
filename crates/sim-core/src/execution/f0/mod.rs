@@ -172,18 +172,17 @@ pub fn execute_bar(
     let original_stop = stop_price(original_kind);
     let stop_will_trigger = before.status == OrderStatus::Dormant
         && original_stop.is_some_and(|stop| stop_touched(before.side, stop, bar));
-    let precomputed_stop_market_price = if stop_will_trigger
-        && matches!(original_kind, OrderKind::StopMarket { .. })
-    {
-        let base = stop_market_base_price(before.side, original_stop, bar);
-        Some(adverse_slippage(
-            base,
-            before.side,
-            config.market_slippage_atoms,
-        )?)
-    } else {
-        None
-    };
+    let precomputed_stop_market_price =
+        if stop_will_trigger && matches!(original_kind, OrderKind::StopMarket { .. }) {
+            let base = stop_market_base_price(before.side, original_stop, bar);
+            Some(adverse_slippage(
+                base,
+                before.side,
+                config.market_slippage_atoms,
+            )?)
+        } else {
+            None
+        };
 
     let mut triggered = false;
     let mut uncertainty = Vec::new();
