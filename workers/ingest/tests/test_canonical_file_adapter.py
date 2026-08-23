@@ -1,9 +1,6 @@
 from pathlib import Path
-from typing import Literal
 
-import pyarrow as pa
 import pytest
-from pyarrow import parquet as pq
 
 from trading_replay_ingest.adapters.canonical_file import (
     CanonicalFileAdapter,
@@ -39,19 +36,21 @@ def request() -> FetchRequest:
     return FetchRequest("canonical_file", "trades", "SYNTH", 0, 100)
 
 
-def declaration(format_name: Literal["csv", "parquet"]) -> ImportDeclaration:
-    return ImportDeclaration(
-        format=format_name,
-        mappings=MAPPINGS,
-        defaults=DEFAULTS,
-        capabilities=("TRADES",),
-        provenance="unit-test user fixture",
-    )
+def declaration(format_name: str) -> ImportDeclaration:
+    common = {
+        "mappings": MAPPINGS,
+        "defaults": DEFAULTS,
+        "capabilities": ("TRADES",),
+        "provenance": "unit-test user fixture",
+    }
+    if format_name == "csv":
+        return ImportDeclaration(format="csv", **common)
+    if format_name == "parquet":
+        return ImportDeclaration(format="parquet", **common)
+    raise AssertionError(f"unsupported test format: {format_name}")
 
 
-def adapter(
-    root: Path, source: str, format_name: Literal["csv", "parquet"]
-) -> CanonicalFileAdapter:
+def adapter(root: Path, source: str, format_name: str) -> CanonicalFileAdapter:
     return CanonicalFileAdapter(
         root=root,
         source_path=Path(source),
@@ -63,6 +62,12 @@ def adapter(
             max_materialized_bytes=1_000_000,
         ),
     )
+
+
+def write_parquet(source: Path, columns: dict[str, list[object]]) -> None:
+    from pyarrow import parquet, table
+
+    parquet.write_table(table(columns), source)
 
 
 def test_csv_import_maps_exact_integer_strings(tmp_path: Path) -> None:
@@ -85,7 +90,8 @@ def test_parquet_import_maps_integers_without_float_roundtrip(tmp_path: Path) ->
     root = tmp_path / "root"
     root.mkdir()
     source = root / "trades.parquet"
-    table = pa.table(
+    write_parquet(
+        source,
         {
             "ts": [10],
             "seq": [0],
@@ -93,9 +99,8 @@ def test_parquet_import_maps_integers_without_float_roundtrip(tmp_path: Path) ->
             "price": [100],
             "qty": [2],
             "side": ["BUY"],
-        }
+        },
     )
-    pq.write_table(table, source)
     importer = adapter(root, "trades.parquet", "parquet")
     chunk = importer.plan(request()).chunks[0]
     event = importer.normalize(chunk, importer.fetch(chunk)).events[0]
@@ -141,18 +146,16 @@ def test_parquet_float_money_fails_closed(tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()
     source = root / "trades.parquet"
-    pq.write_table(
-        pa.table(
-            {
-                "ts": [10],
-                "seq": [0],
-                "kind": ["TRADE"],
-                "price": [100.5],
-                "qty": [2],
-                "side": ["BUY"],
-            }
-        ),
+    write_parquet(
         source,
+        {
+            "ts": [10],
+            "seq": [0],
+            "kind": ["TRADE"],
+            "price": [100.5],
+            "qty": [2],
+            "side": ["BUY"],
+        },
     )
     importer = adapter(root, "trades.parquet", "parquet")
     chunk = importer.plan(request()).chunks[0]
