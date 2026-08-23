@@ -5,3 +5,6 @@
 #[allow(clippy::missing_panics_doc, clippy::too_many_lines)]
 pub mod f0;
 pub mod f1;
+// Keep optional-side presence and crossed-book validation as two explicit audit steps.
+#[allow(clippy::collapsible_if)]
+pub mod f2;
