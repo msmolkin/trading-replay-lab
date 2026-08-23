@@ -8,6 +8,7 @@ version = "0.0.0"
 description = "Trading Replay Lab API scaffold"
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "cryptography==50.0.0",
   "fastapi==0.141.1",
   "sqlalchemy==2.0.52",
   "uvicorn==0.52.2",
