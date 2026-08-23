@@ -1,0 +1,6 @@
+# Fail closed on accidental market-data/database commits and common credential shapes.
+max_tracked_file_bytes = 5242880
+forbidden_extensions = [".parquet", ".duckdb", ".db", ".sqlite", ".sqlite3"]
+text_scan_limit_bytes = 1048576
+# Empty/example values are permitted in tracked templates; populated secrets are not.
+allowed_secret_assignment_values = ["", "replace-me", "changeme", "example", "placeholder", "redacted"]

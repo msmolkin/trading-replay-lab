@@ -1,0 +1,11 @@
+target-version = "py314"
+line-length = 100
+src = ["apps/api/src", "workers/ingest/src"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
