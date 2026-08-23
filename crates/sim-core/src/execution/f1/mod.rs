@@ -207,7 +207,9 @@ impl core::fmt::Display for F1Error {
         match self {
             Self::InvalidQuote => formatter.write_str("invalid F1 BBO quote"),
             Self::InvalidTrade => formatter.write_str("invalid F1 trade print"),
-            Self::FutureMarketData => formatter.write_str("F1 market data is beyond visible frontier"),
+            Self::FutureMarketData => {
+                formatter.write_str("F1 market data is beyond visible frontier")
+            }
             Self::StaleQuote => formatter.write_str("F1 BBO quote exceeds staleness limit"),
             Self::StaleTrade => formatter.write_str("F1 trade print exceeds staleness limit"),
             Self::PriceArithmetic => formatter.write_str("F1 price arithmetic failed"),
@@ -590,19 +592,13 @@ mod tests {
             PriceAtoms::new(103)
         );
         assert_eq!(
-            quote_reference_price(
-                quote,
-                QuoteReference::Midpoint(MidpointRounding::TowardBid)
-            )
-            .unwrap(),
+            quote_reference_price(quote, QuoteReference::Midpoint(MidpointRounding::TowardBid))
+                .unwrap(),
             PriceAtoms::new(101)
         );
         assert_eq!(
-            quote_reference_price(
-                quote,
-                QuoteReference::Midpoint(MidpointRounding::TowardAsk)
-            )
-            .unwrap(),
+            quote_reference_price(quote, QuoteReference::Midpoint(MidpointRounding::TowardAsk))
+                .unwrap(),
             PriceAtoms::new(102)
         );
     }
@@ -610,9 +606,16 @@ mod tests {
     #[test]
     fn ioc_market_partially_takes_ask_and_cancels_remainder() {
         let mut orders = OrderState::new();
-        let id = submit(&mut orders, OrderKind::Market, TimeInForce::Ioc, Side::Buy, 10, 5);
-        let outcome = execute_on_quote(&mut orders, id, quote(5, 100), 5, 100, F1Config::default())
-            .unwrap();
+        let id = submit(
+            &mut orders,
+            OrderKind::Market,
+            TimeInForce::Ioc,
+            Side::Buy,
+            10,
+            5,
+        );
+        let outcome =
+            execute_on_quote(&mut orders, id, quote(5, 100), 5, 100, F1Config::default()).unwrap();
         assert_eq!(outcome.filled, QtyAtoms::new(4));
         assert_eq!(outcome.fill_price, Some(PriceAtoms::new(103)));
         assert_eq!(outcome.liquidity_role, Some(F1LiquidityRole::Taker));
@@ -632,8 +635,8 @@ mod tests {
             2,
             5,
         );
-        let outcome = execute_on_quote(&mut orders, id, quote(5, 100), 5, 100, F1Config::default())
-            .unwrap();
+        let outcome =
+            execute_on_quote(&mut orders, id, quote(5, 100), 5, 100, F1Config::default()).unwrap();
         assert_eq!(outcome.filled, QtyAtoms::new(2));
         assert_eq!(outcome.fill_price, Some(PriceAtoms::new(103)));
         assert_eq!(outcome.status, OrderStatus::Filled);
@@ -642,7 +645,14 @@ mod tests {
     #[test]
     fn configured_taker_size_cap_is_applied_after_displayed_size() {
         let mut orders = OrderState::new();
-        let id = submit(&mut orders, OrderKind::Market, TimeInForce::Gtc, Side::Sell, 10, 1);
+        let id = submit(
+            &mut orders,
+            OrderKind::Market,
+            TimeInForce::Gtc,
+            Side::Sell,
+            10,
+            1,
+        );
         let config = F1Config {
             max_taker_fill: Some(QtyAtoms::new(2)),
             ..F1Config::default()
@@ -690,12 +700,12 @@ mod tests {
             1,
             7,
         );
-        let same = execute_on_quote(&mut orders, id, quote(7, 100), 7, 100, F1Config::default())
-            .unwrap();
+        let same =
+            execute_on_quote(&mut orders, id, quote(7, 100), 7, 100, F1Config::default()).unwrap();
         assert!(!same.triggered);
         assert_eq!(same.filled, QtyAtoms::new(0));
-        let later = execute_on_quote(&mut orders, id, quote(8, 101), 8, 101, F1Config::default())
-            .unwrap();
+        let later =
+            execute_on_quote(&mut orders, id, quote(8, 101), 8, 101, F1Config::default()).unwrap();
         assert!(later.triggered);
         assert_eq!(later.filled, QtyAtoms::new(1));
         assert_eq!(later.fill_price, Some(PriceAtoms::new(103)));
