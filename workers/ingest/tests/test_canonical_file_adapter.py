@@ -1,3 +1,5 @@
+# ruff: noqa: I001  # Ruff 0.16.2 misclassifies this test-only mixed import block.
+
 from pathlib import Path
 
 import pytest
