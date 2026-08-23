@@ -98,8 +98,8 @@ def test_broken_hash_chain_rolls_back_command_and_version(tmp_path: Path) -> Non
 
 
 def test_migration_pair_exists() -> None:
-    root = Path(__file__).resolve().parents[3]
-    up = root / "migrations" / "0001_event_store.up.sql"
-    down = root / "migrations" / "0001_event_store.down.sql"
+    api_root = Path(__file__).resolve().parents[1]
+    up = api_root / "migrations" / "0001_event_store.up.sql"
+    down = api_root / "migrations" / "0001_event_store.down.sql"
     assert "CREATE TABLE domain_events" in up.read_text(encoding="utf-8")
     assert "DROP TABLE IF EXISTS domain_events" in down.read_text(encoding="utf-8")
