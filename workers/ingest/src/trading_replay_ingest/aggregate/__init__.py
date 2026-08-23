@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from trading_replay_ingest.calendars import Interval, SessionCalendar, parse_interval
 
@@ -94,7 +95,9 @@ class _MutableBar:
 def _halt_overlaps(calendar: BucketCalendar, start_ns: int, end_ns: int) -> bool:
     if not isinstance(calendar, SessionCalendar):
         return False
-    return any(halt_start < end_ns and start_ns < halt_end for halt_start, halt_end in calendar.halts)
+    return any(
+        halt_start < end_ns and start_ns < halt_end for halt_start, halt_end in calendar.halts
+    )
 
 
 def aggregate_trades(
