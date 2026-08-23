@@ -1,0 +1,8 @@
+BEGIN;
+DROP TABLE IF EXISTS commitments;
+DROP TABLE IF EXISTS snapshots;
+DROP TABLE IF EXISTS domain_events;
+DROP TABLE IF EXISTS commands;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS rulesets;
+COMMIT;
