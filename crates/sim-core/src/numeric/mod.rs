@@ -184,7 +184,11 @@ fn pow10(scale: u8) -> Result<i128, NumericError> {
     Ok(10_i128.pow(u32::from(scale)))
 }
 
-fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i128, NumericError> {
+fn div_round(
+    numerator: i128,
+    denominator: i128,
+    rounding: Rounding,
+) -> Result<i128, NumericError> {
     if denominator <= 0 {
         return Err(NumericError::InvalidDivisor);
     }
@@ -195,13 +199,16 @@ fn div_round(numerator: i128, denominator: i128, rounding: Rounding) -> Result<i
     }
     let sign = if numerator.is_negative() { -1 } else { 1 };
     let rounded = match rounding {
-        Rounding::TowardZero => quotient,
+        Rounding::TowardZero => Some(quotient),
         Rounding::AwayFromZero => quotient.checked_add(sign),
         Rounding::Floor if numerator.is_negative() => quotient.checked_sub(1),
         Rounding::Ceiling if numerator.is_positive() => quotient.checked_add(1),
         Rounding::Floor | Rounding::Ceiling => Some(quotient),
         Rounding::NearestTiesAway => {
-            let doubled = remainder.abs().checked_mul(2).ok_or(NumericError::Overflow)?;
+            let doubled = remainder
+                .abs()
+                .checked_mul(2)
+                .ok_or(NumericError::Overflow)?;
             if doubled >= denominator {
                 quotient.checked_add(sign)
             } else {
@@ -244,6 +251,7 @@ pub fn rescale_i64(
 ///
 /// # Errors
 /// Returns an error for invalid scales, intermediate overflow, or an `i64` result overflow.
+#[allow(clippy::too_many_arguments)]
 pub fn linear_notional_minor(
     qty: QtyAtoms,
     price: PriceAtoms,
@@ -267,7 +275,11 @@ pub fn linear_notional_minor(
         .and_then(|value| value.checked_mul(i128::from(contract_multiplier_atoms)))
         .ok_or(NumericError::Overflow)?;
     let adjusted = if total_scale >= settlement_scale.get() {
-        div_round(product, pow10(total_scale - settlement_scale.get())?, rounding)?
+        div_round(
+            product,
+            pow10(total_scale - settlement_scale.get())?,
+            rounding,
+        )?
     } else {
         product
             .checked_mul(pow10(settlement_scale.get() - total_scale)?)
@@ -339,16 +351,28 @@ mod tests {
         let two = DecimalScale::new(2).unwrap();
         let zero = DecimalScale::new(0).unwrap();
         assert_eq!(rescale_i64(155, two, zero, Rounding::TowardZero), Ok(1));
-        assert_eq!(rescale_i64(155, two, zero, Rounding::NearestTiesAway), Ok(2));
+        assert_eq!(
+            rescale_i64(155, two, zero, Rounding::NearestTiesAway),
+            Ok(2)
+        );
         assert_eq!(rescale_i64(-155, two, zero, Rounding::Floor), Ok(-2));
         assert_eq!(rescale_i64(-155, two, zero, Rounding::Ceiling), Ok(-1));
     }
 
     #[test]
     fn arithmetic_overflow_fails_closed() {
-        assert_eq!(PriceAtoms::new(i64::MAX).checked_add(PriceAtoms::new(1)), Err(NumericError::Overflow));
-        assert_eq!(QtyAtoms::new(u64::MAX).checked_add(QtyAtoms::new(1)), Err(NumericError::Overflow));
-        assert_eq!(MoneyMinor::new(i64::MIN).checked_add(MoneyMinor::new(-1)), Err(NumericError::Overflow));
+        assert_eq!(
+            PriceAtoms::new(i64::MAX).checked_add(PriceAtoms::new(1)),
+            Err(NumericError::Overflow)
+        );
+        assert_eq!(
+            QtyAtoms::new(u64::MAX).checked_add(QtyAtoms::new(1)),
+            Err(NumericError::Overflow)
+        );
+        assert_eq!(
+            MoneyMinor::new(i64::MIN).checked_add(MoneyMinor::new(-1)),
+            Err(NumericError::Overflow)
+        );
     }
 
     #[test]
@@ -360,19 +384,36 @@ mod tests {
         let divisor = 10_u64.pow(4);
         let mut state = 0x4d59_5df4_d0f3_3173_u64;
         for _ in 0..512 {
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
             let qty = state % 1_000_000 + 1;
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
             let price = (state % 10_000_000 + 1) as i64;
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
             let multiplier = state % 10_000 + 1;
 
-            let actual = linear_notional_minor(QtyAtoms::new(qty), PriceAtoms::new(price), multiplier, qty_scale, price_scale, multiplier_scale, settlement_scale, Rounding::TowardZero).unwrap().get();
+            let actual = linear_notional_minor(
+                QtyAtoms::new(qty),
+                PriceAtoms::new(price),
+                multiplier,
+                qty_scale,
+                price_scale,
+                multiplier_scale,
+                settlement_scale,
+                Rounding::TowardZero,
+            )
+            .unwrap()
+            .get();
 
             let mut reference = BigUnsigned::from_u64(qty);
             reference.mul_u64(price as u64);
             reference.mul_u64(multiplier);
-            let _remainder = reference.div_u64(divisor);
+            reference.div_u64(divisor);
             let expected = reference.to_u64().unwrap();
             assert_eq!(u64::try_from(actual).unwrap(), expected);
         }
