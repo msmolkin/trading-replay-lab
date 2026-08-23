@@ -2,7 +2,6 @@
 
 from json import dumps
 
-
 type JsonValue = bool | int | str | list[JsonValue] | dict[str, JsonValue] | None
 
 
