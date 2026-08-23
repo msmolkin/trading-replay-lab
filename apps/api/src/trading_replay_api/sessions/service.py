@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import Connection, Engine, insert, select, update
 from sqlalchemy.exc import IntegrityError
@@ -48,7 +48,7 @@ class SessionService:
         """Create an uncommitted setup session at optimistic version zero."""
         _validate_identity(session_id, "session_id")
         _validate_identity(principal_id, "principal_id")
-        validate_i64(created_at_ns, "created_at_ns")
+        _validate_lifecycle_i64(created_at_ns, "created_at_ns")
         try:
             with self.engine.begin() as connection:
                 connection.execute(
@@ -206,7 +206,7 @@ class SessionService:
         logical_time_ns: int,
     ) -> SessionRecord:
         """Advance a running session monotonically without crossing its committed end."""
-        validate_i64(logical_time_ns, "logical_time_ns")
+        _validate_lifecycle_i64(logical_time_ns, "logical_time_ns")
         next_version = _next_version(expected_version)
         with self.engine.begin() as connection:
             row = self._locked_row(connection, session_id, principal_id)
@@ -294,8 +294,8 @@ class SessionService:
     ) -> SessionRecord:
         """Fork a stable committed frontier into a new paused/committed child session."""
         _validate_identity(child_session_id, "child_session_id")
-        validate_i64(created_at_ns, "created_at_ns")
-        validate_version(expected_version)
+        _validate_lifecycle_i64(created_at_ns, "created_at_ns")
+        _validate_lifecycle_version(expected_version)
         if child_session_id == session_id:
             raise SessionLifecycleError(
                 SessionErrorCode.INVALID_FORK_TARGET,
@@ -415,7 +415,12 @@ class SessionService:
                 "session changed during lifecycle transition",
             )
 
-    def _locked_row(self, connection: Connection, session_id: str, principal_id: str) -> object:
+    def _locked_row(
+        self,
+        connection: Connection,
+        session_id: str,
+        principal_id: str,
+    ) -> Any:
         row = connection.execute(
             select(sessions).where(sessions.c.session_id == session_id).with_for_update()
         ).one_or_none()
@@ -450,7 +455,7 @@ class SessionService:
     def _materialize_from_row(
         self,
         connection: Connection,
-        row: object,
+        row: Any,
         principal_id: str,
     ) -> SessionRecord:
         if str(row.principal_id) != principal_id:
@@ -489,17 +494,27 @@ class SessionService:
                 "persisted session event payload is invalid",
             ) from error
 
-        version = int(row.version)
-        validate_version(version)
-        created_at_ns = int(row.created_at_ns)
-        validate_i64(created_at_ns, "created_at_ns")
-        status = SessionStatus(str(row.status))
+        try:
+            version = int(row.version)
+            validate_version(version)
+            created_at_ns = int(row.created_at_ns)
+            validate_i64(created_at_ns, "created_at_ns")
+            status = SessionStatus(str(row.status))
+        except (TypeError, ValueError) as error:
+            raise SessionLifecycleError(
+                SessionErrorCode.INVALID_VALUE,
+                "persisted session row is invalid",
+            ) from error
         if status != SessionStatus.SETUP and setup is None:
             raise SessionLifecycleError(
                 SessionErrorCode.INVALID_VALUE,
                 "persisted non-setup session is missing its immutable setup event",
             )
-        if setup is not None and row.ruleset_id is not None and str(row.ruleset_id) != setup.ruleset_id:
+        if (
+            setup is not None
+            and row.ruleset_id is not None
+            and str(row.ruleset_id) != setup.ruleset_id
+        ):
             raise SessionLifecycleError(
                 SessionErrorCode.INVALID_VALUE,
                 "persisted ruleset id disagrees with the immutable setup event",
@@ -526,6 +541,16 @@ class SessionService:
         ).one_or_none()
         body = definition.body()
         if existing is None:
+            existing_hash_id = connection.execute(
+                select(rulesets.c.ruleset_id).where(
+                    rulesets.c.ruleset_hash == definition.ruleset_hash
+                )
+            ).scalar_one_or_none()
+            if existing_hash_id is not None:
+                raise SessionLifecycleError(
+                    SessionErrorCode.RULESET_CONFLICT,
+                    "ruleset content hash is already bound to a different ruleset id",
+                )
             connection.execute(
                 insert(rulesets).values(
                     ruleset_id=definition.ruleset_id,
@@ -620,10 +645,7 @@ def _event_hash(
 
 
 def _next_version(expected_version: int) -> int:
-    try:
-        validate_version(expected_version)
-    except ValueError as error:
-        raise SessionLifecycleError(SessionErrorCode.INVALID_VALUE, str(error)) from error
+    _validate_lifecycle_version(expected_version)
     if expected_version == 2**64 - 1:
         raise SessionLifecycleError(
             SessionErrorCode.VERSION_CONFLICT,
@@ -632,13 +654,29 @@ def _next_version(expected_version: int) -> int:
     return expected_version + 1
 
 
-def _require_version(stored: object, expected: int) -> None:
+def _validate_lifecycle_version(value: int) -> None:
+    try:
+        validate_version(value)
+    except ValueError as error:
+        raise SessionLifecycleError(SessionErrorCode.INVALID_VALUE, str(error)) from error
+
+
+def _validate_lifecycle_i64(value: int, name: str) -> None:
+    try:
+        validate_i64(value, name)
+    except ValueError as error:
+        raise SessionLifecycleError(SessionErrorCode.INVALID_VALUE, str(error)) from error
+
+
+def _require_version(stored: Any, expected: int) -> None:
     try:
         validate_version(expected)
         stored_version = int(stored)
         validate_version(stored_version)
     except (TypeError, ValueError) as error:
-        raise SessionLifecycleError(SessionErrorCode.INVALID_VALUE, "invalid session version") from error
+        raise SessionLifecycleError(
+            SessionErrorCode.INVALID_VALUE, "invalid session version"
+        ) from error
     if stored_version != expected:
         raise SessionLifecycleError(
             SessionErrorCode.VERSION_CONFLICT,
