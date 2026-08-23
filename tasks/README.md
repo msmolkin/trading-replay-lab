@@ -19,26 +19,26 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 
 ## Milestone 0 — Repository foundation
 
-### M0-01 — Monorepo bootstrap (`ready`)
+### M0-01 — Monorepo bootstrap (`done`)
 
 - Depends: none
 - Owns: root build manifests/lockfiles, `apps/`, `crates/`, `workers/`, `packages/` directory scaffolds only
 - Deliver: pinned Rust/Python/Node toolchains; workspace commands for format/lint/type/test; minimal hello-world packages; `.env.example`.
 - Accept: clean clone executes one documented bootstrap command and all empty-stack checks; no domain behavior is introduced.
 
-### M0-02 — Contract source and code generation (`blocked`: M0-01)
+### M0-02 — Contract source and code generation (`done`)
 
 - Owns: `packages/contracts/**`, `schemas/**`
 - Deliver: JSON Schema source layout; generated TypeScript/Python/Rust models; schema version check; order, market event, manifest, command/event, visibility, and result bundle types.
 - Accept: valid examples round-trip in all three languages; incompatible major and unsafe JSON integers fail.
 
-### M0-03 — CI, policy, and repository checks (`blocked`: M0-01)
+### M0-03 — CI, policy, and repository checks (`done`)
 
 - Owns: `.github/workflows/**`, root formatter/linter configs, secret/large-file policy configs
 - Deliver: pull-request and nightly matrices described in `docs/testing.md`; dependency caching; generated-code drift and schema compatibility checks.
 - Accept: intentionally malformed formatting, generated drift, secret fixture, and Parquet file are rejected in a test branch.
 
-### M0-04 — Synthetic fixture generator (`blocked`: M0-02)
+### M0-04 — Synthetic fixture generator (`ready`)
 
 - Owns: `fixtures/**`, `tools/fixture-generator/**`
 - Deliver: deterministic generator and fixture license/provenance manifests for F0/F1/F2 micro-markets.
@@ -46,13 +46,13 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 
 ## Milestone 1 — Deterministic simulator
 
-### M1-01 — Fixed-point primitives and instruments (`blocked`: M0-02)
+### M1-01 — Fixed-point primitives and instruments (`ready`)
 
 - Owns: `crates/sim-core/src/numeric/**`, `crates/sim-core/src/instrument/**`
 - Deliver: checked integer price/qty/money/rate types, rounding policies, linear contract math, point-in-time instrument validation.
 - Accept: boundary/overflow tests and differential arbitrary-precision tests pass; no float enters public domain types.
 
-### M1-02 — Event kernel and hash chain (`blocked`: M0-02)
+### M1-02 — Event kernel and hash chain (`ready`)
 
 - Owns: `crates/sim-core/src/kernel/**`, `crates/sim-core/src/hash/**`
 - Deliver: pure input transition shell, canonical serialization, ordered output, prior/current hashes, snapshot state-version hooks.
@@ -126,7 +126,7 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 
 ## Milestone 2 — Ingestion and catalog
 
-### M2-01 — Ingestion framework (`blocked`: M0-02)
+### M2-01 — Ingestion framework (`ready`)
 
 - Owns: `workers/ingest/src/core/**`, `workers/ingest/src/cli.py`
 - Deliver: adapter protocol, fetch plans/checkpoints, content-address cache, rate/cost guard, canonical writer, idempotent job state.
@@ -182,7 +182,7 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 
 ## Milestone 3 — API, persistence, and sealed sessions
 
-### M3-01 — Database/event store (`blocked`: M0-02, M0-01)
+### M3-01 — Database/event store (`ready`)
 
 - Owns: `apps/api/src/db/**`, non-catalog migrations
 - Deliver: session/command/domain-event/snapshot/ruleset/commitment models; transactions, optimistic versioning, hash-chain constraints.
@@ -232,7 +232,7 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 
 ## Milestone 4 — Web application
 
-### M4-01 — UI foundations and design system (`blocked`: M0-01, M0-02)
+### M4-01 — UI foundations and design system (`ready`)
 
 - Owns: `apps/web/src/components/foundation/**`, `apps/web/src/styles/**`, `packages/ui/**`
 - Deliver: theme/tokens, responsive shell, accessible controls/dialogs/tables, formatting for fixed-point values and hidden dates.
