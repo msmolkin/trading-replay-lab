@@ -42,7 +42,10 @@ function draft(overrides: Partial<SetupDraft> = {}): SetupDraft {
   };
 }
 
-function eligibleReport(state: SetupState, overrides: Partial<SetupPreflight> = {}): SetupPreflight {
+function eligibleReport(
+  state: SetupState,
+  overrides: Partial<SetupPreflight> = {},
+): SetupPreflight {
   return {
     requestKey: setupRequestKey(state.draft),
     eligible: true,
@@ -87,9 +90,7 @@ test("tier capabilities match the API setup contract", () => {
 
 test("setup validation never coerces exact financial or time inputs through Number", () => {
   assert.deepEqual(validateSetup(draft()), {});
-  const invalid = validateSetup(
-    draft({ equityMinor: "100.00", durationNs: "01", leverage: 5.5 }),
-  );
+  const invalid = validateSetup(draft({ equityMinor: "100.00", durationNs: "01", leverage: 5.5 }));
   assert.ok(invalid.equityMinor);
   assert.ok(invalid.durationNs);
   assert.ok(invalid.leverage);
