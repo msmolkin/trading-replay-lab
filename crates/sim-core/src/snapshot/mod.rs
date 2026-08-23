@@ -2,6 +2,7 @@
 
 use crate::economics::EconomicsState;
 use crate::execution::f2::L2Book;
+use crate::facade::FacadeConfig;
 use crate::kernel::KernelSnapshot;
 use crate::ledger::LedgerSnapshot;
 use crate::orders::OrderState;
@@ -21,12 +22,8 @@ pub const SNAPSHOT_FORMAT_VERSION: u16 = 1;
 pub struct SimulatorSnapshot {
     /// Snapshot schema/compatibility version.
     pub format_version: u16,
-    /// Public facade API version that produced this snapshot.
-    pub facade_api_version: u16,
-    /// Session identity bound to the deterministic kernel chain.
-    pub session_id: String,
-    /// Stable execution-tier code committed for this session.
-    pub execution_tier: String,
+    /// Immutable simulator rules/configuration bound into deterministic continuation.
+    pub config: FacadeConfig,
     /// Last accepted logical time; `None` before the first input.
     pub last_logical_ts_ns: Option<i64>,
     /// Last market-data sequence observed by an execution input.
