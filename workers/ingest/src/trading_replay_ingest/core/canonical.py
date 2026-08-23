@@ -1,11 +1,9 @@
 """Canonical JSON helpers for ingestion metadata and records."""
 
-from __future__ import annotations
-
 import json
 
 
-type JsonValue = None | bool | int | str | list[JsonValue] | dict[str, JsonValue]
+type JsonValue = bool | int | str | list[JsonValue] | dict[str, JsonValue] | None
 
 
 def require_json_value(value: object) -> JsonValue:
