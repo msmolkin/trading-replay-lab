@@ -73,7 +73,7 @@ def adapter(root: Path, source: str, format_name: str) -> CanonicalFileAdapter:
 
 
 def write_parquet(source: Path, columns: dict[str, list[object]]) -> None:
-    from pyarrow import parquet, table
+    from pyarrow import parquet, table  # type: ignore[import-untyped]
 
     parquet.write_table(table(columns), source)
 
