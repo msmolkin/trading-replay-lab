@@ -5,3 +5,4 @@
 #[allow(clippy::missing_panics_doc, clippy::too_many_lines)]
 pub mod f0;
 pub mod f1;
+pub mod f2;
