@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -41,10 +41,9 @@ def request() -> FetchRequest:
     return FetchRequest("canonical_file", "trades", "SYNTH", 0, 100)
 
 
-def declaration(format_name: str) -> ImportDeclaration:
-    assert format_name in {"csv", "parquet"}
+def declaration(format_name: Literal["csv", "parquet"]) -> ImportDeclaration:
     return ImportDeclaration(
-        format=cast(Literal["csv", "parquet"], format_name),
+        format=format_name,
         mappings=MAPPINGS,
         defaults=DEFAULTS,
         capabilities=("TRADES",),
@@ -52,7 +51,9 @@ def declaration(format_name: str) -> ImportDeclaration:
     )
 
 
-def adapter(root: Path, source: str, format_name: str) -> CanonicalFileAdapter:
+def adapter(
+    root: Path, source: str, format_name: Literal["csv", "parquet"]
+) -> CanonicalFileAdapter:
     return CanonicalFileAdapter(
         root=root,
         source_path=Path(source),
