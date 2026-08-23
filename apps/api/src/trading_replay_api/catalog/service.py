@@ -199,9 +199,7 @@ def _segment_meets_policy(segment: CoverageSegment, requirement: SetupRequiremen
         return False
     if segment.redistribution_class not in requirement.allowed_redistribution:
         return False
-    if segment.status == ManifestStatus.DEGRADED and not requirement.allow_degraded:
-        return False
-    return True
+    return segment.status != ManifestStatus.DEGRADED or requirement.allow_degraded
 
 
 def _subtract_gaps(
