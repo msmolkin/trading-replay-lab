@@ -121,7 +121,9 @@ def test_spot_timestamp_unit_switch_is_date_driven() -> None:
     before_chunk = before_adapter.plan(
         request(BinanceDataKind.TRADES, day_ns(before_day), day_ns(before_day) + 1)
     ).chunks[0]
-    before_event = before_adapter.normalize(before_chunk, before_adapter.fetch(before_chunk)).events[0]
+    before_event = before_adapter.normalize(
+        before_chunk, before_adapter.fetch(before_chunk)
+    ).events[0]
     assert before_event["ts_event_ns"] == "1735603200123000000"
 
     after_url = adapter.archive_url(after_day)
@@ -224,7 +226,9 @@ def test_unsafe_archive_and_inexact_decimal_fail_closed() -> None:
     filename = url.rsplit("/", maxsplit=1)[-1]
     unsafe_raw = zipped(filename, "1,100.00,1.000,100,1,false,true\n", member_name="../escape.csv")
     unsafe = BinancePublicAdapter(config(), transport=transport_for(url, unsafe_raw))
-    chunk = unsafe.plan(request(BinanceDataKind.TRADES, day_ns(target), day_ns(target) + 1)).chunks[0]
+    chunk = unsafe.plan(request(BinanceDataKind.TRADES, day_ns(target), day_ns(target) + 1)).chunks[
+        0
+    ]
     with pytest.raises(BinanceIntegrityError, match="unsafe"):
         unsafe.normalize(chunk, unsafe.fetch(chunk))
 
