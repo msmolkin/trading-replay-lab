@@ -1,0 +1,17 @@
+[package]
+name = "sim-cli"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "sim-cli"
+path = "src/main.rs"
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+
+[lints]
+workspace = true

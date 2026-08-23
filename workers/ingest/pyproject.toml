@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=80,<81"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trading-replay-ingest"
+version = "0.0.0"
+description = "Trading Replay Lab ingestion worker scaffold"
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[project.scripts]
+trading-replay-ingest = "trading_replay_ingest.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
