@@ -4,7 +4,9 @@
 
 use core::fmt;
 
-use crate::numeric::{DecimalScale, MoneyMinor, NumericError, PriceAtoms, QtyAtoms, Rounding, linear_notional_minor};
+use crate::numeric::{
+    DecimalScale, MoneyMinor, NumericError, PriceAtoms, QtyAtoms, Rounding, linear_notional_minor,
+};
 
 /// Supported broad asset classes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -67,13 +69,19 @@ pub enum InstrumentError {
 impl fmt::Display for InstrumentError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptyIdentifier(field) => write!(formatter, "empty instrument identifier: {field}"),
+            Self::EmptyIdentifier(field) => {
+                write!(formatter, "empty instrument identifier: {field}")
+            }
             Self::ZeroIncrement(field) => write!(formatter, "zero instrument increment: {field}"),
             Self::ZeroMultiplier => formatter.write_str("zero contract multiplier"),
-            Self::InvalidEffectiveInterval => formatter.write_str("invalid definition effective interval"),
+            Self::InvalidEffectiveInterval => {
+                formatter.write_str("invalid definition effective interval")
+            }
             Self::InvalidLifecycle => formatter.write_str("invalid listing or expiry interval"),
             Self::InvalidPrice => formatter.write_str("price is non-positive or not tick aligned"),
-            Self::InvalidQuantity => formatter.write_str("quantity is zero or not increment aligned"),
+            Self::InvalidQuantity => {
+                formatter.write_str("quantity is zero or not increment aligned")
+            }
             Self::InactiveDefinition => formatter.write_str("instrument definition is not active"),
             Self::UnsupportedSettlement => formatter.write_str("unsupported settlement calculator"),
             Self::Numeric(error) => error.fmt(formatter),
@@ -145,13 +153,17 @@ impl InstrumentDefinition {
         if self.contract_multiplier_atoms == 0 {
             return Err(InstrumentError::ZeroMultiplier);
         }
-        if self.effective_through_ns.is_some_and(|through| through <= self.effective_from_ns) {
+        if self
+            .effective_through_ns
+            .is_some_and(|through| through <= self.effective_from_ns)
+        {
             return Err(InstrumentError::InvalidEffectiveInterval);
         }
-        if let (Some(listing), Some(expiry)) = (self.listing_ns, self.expiry_ns) {
-            if expiry <= listing {
-                return Err(InstrumentError::InvalidLifecycle);
-            }
+        if matches!(
+            (self.listing_ns, self.expiry_ns),
+            (Some(listing), Some(expiry)) if expiry <= listing
+        ) {
+            return Err(InstrumentError::InvalidLifecycle);
         }
         Ok(())
     }
@@ -160,7 +172,9 @@ impl InstrumentDefinition {
     #[must_use]
     pub fn is_active_at(&self, ts_event_ns: i64) -> bool {
         let effective = ts_event_ns >= self.effective_from_ns
-            && self.effective_through_ns.is_none_or(|through| ts_event_ns < through);
+            && self
+                .effective_through_ns
+                .is_none_or(|through| ts_event_ns < through);
         let listed = self.listing_ns.is_none_or(|listing| ts_event_ns >= listing);
         let unexpired = self.expiry_ns.is_none_or(|expiry| ts_event_ns < expiry);
         effective && listed && unexpired
@@ -170,13 +184,22 @@ impl InstrumentDefinition {
     ///
     /// # Errors
     /// Returns an [`InstrumentError`] when the definition is inactive or values violate increments.
-    pub fn validate_trade_values(&self, price: PriceAtoms, qty: QtyAtoms, ts_event_ns: i64) -> Result<(), InstrumentError> {
+    pub fn validate_trade_values(
+        &self,
+        price: PriceAtoms,
+        qty: QtyAtoms,
+        ts_event_ns: i64,
+    ) -> Result<(), InstrumentError> {
         self.validate()?;
         if !self.is_active_at(ts_event_ns) {
             return Err(InstrumentError::InactiveDefinition);
         }
         let price_value = price.get();
-        if price_value <= 0 || u64::try_from(price_value).map_or(true, |value| value % self.tick_size_atoms != 0) {
+        if price_value <= 0 {
+            return Err(InstrumentError::InvalidPrice);
+        }
+        let price_unsigned = u64::try_from(price_value).map_err(|_| InstrumentError::InvalidPrice)?;
+        if price_unsigned % self.tick_size_atoms != 0 {
             return Err(InstrumentError::InvalidPrice);
         }
         if qty.get() == 0 || qty.get() % self.qty_increment_atoms != 0 {
@@ -189,11 +212,27 @@ impl InstrumentDefinition {
     ///
     /// # Errors
     /// Returns [`InstrumentError::UnsupportedSettlement`] for inverse instruments and propagates numeric overflow.
-    pub fn linear_notional(&self, qty: QtyAtoms, price: PriceAtoms, settlement_scale: DecimalScale, rounding: Rounding) -> Result<MoneyMinor, InstrumentError> {
+    pub fn linear_notional(
+        &self,
+        qty: QtyAtoms,
+        price: PriceAtoms,
+        settlement_scale: DecimalScale,
+        rounding: Rounding,
+    ) -> Result<MoneyMinor, InstrumentError> {
         if self.settlement_kind != SettlementKind::Linear {
             return Err(InstrumentError::UnsupportedSettlement);
         }
-        Ok(linear_notional_minor(qty, price, self.contract_multiplier_atoms, self.qty_scale, self.price_scale, self.multiplier_scale, settlement_scale, rounding)?)
+        linear_notional_minor(
+            qty,
+            price,
+            self.contract_multiplier_atoms,
+            self.qty_scale,
+            self.price_scale,
+            self.multiplier_scale,
+            settlement_scale,
+            rounding,
+        )
+        .map_err(InstrumentError::from)
     }
 }
 
@@ -233,15 +272,34 @@ mod tests {
     #[test]
     fn increments_fail_closed() {
         let definition = instrument();
-        assert_eq!(definition.validate_trade_values(PriceAtoms::new(10_005), QtyAtoms::new(2), 200), Err(InstrumentError::InvalidPrice));
-        assert_eq!(definition.validate_trade_values(PriceAtoms::new(10_000), QtyAtoms::new(3), 200), Err(InstrumentError::InvalidQuantity));
-        assert_eq!(definition.validate_trade_values(PriceAtoms::new(10_000), QtyAtoms::new(2), 900), Err(InstrumentError::InactiveDefinition));
+        assert_eq!(
+            definition.validate_trade_values(PriceAtoms::new(10_005), QtyAtoms::new(2), 200),
+            Err(InstrumentError::InvalidPrice)
+        );
+        assert_eq!(
+            definition.validate_trade_values(PriceAtoms::new(10_000), QtyAtoms::new(3), 200),
+            Err(InstrumentError::InvalidQuantity)
+        );
+        assert_eq!(
+            definition.validate_trade_values(PriceAtoms::new(10_000), QtyAtoms::new(2), 900),
+            Err(InstrumentError::InactiveDefinition)
+        );
     }
 
     #[test]
     fn linear_notional_uses_declared_scales() {
         let definition = instrument();
         let cents = DecimalScale::new(2).unwrap();
-        assert_eq!(definition.linear_notional(QtyAtoms::new(3), PriceAtoms::new(12_345), cents, Rounding::TowardZero).unwrap(), MoneyMinor::new(37_035));
+        assert_eq!(
+            definition
+                .linear_notional(
+                    QtyAtoms::new(3),
+                    PriceAtoms::new(12_345),
+                    cents,
+                    Rounding::TowardZero,
+                )
+                .unwrap(),
+            MoneyMinor::new(37_035)
+        );
     }
 }
