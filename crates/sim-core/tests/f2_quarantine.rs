@@ -1,7 +1,5 @@
 use sim_core::economics::{EconomicsMath, LiquidityRole};
-use sim_core::execution::f2::{
-    BookSide, DepthLevel, F2Error, L2Delta, L2Snapshot, SweepConfig,
-};
+use sim_core::execution::f2::{BookSide, DepthLevel, F2Error, L2Delta, L2Snapshot, SweepConfig};
 use sim_core::facade::{
     DomainEvent, DomainEventPayload, ExecutionTier, FACADE_API_VERSION, FacadeConfig,
     FacadeErrorCode, FacadeInitialState, FacadeInput, FacadeRules, SimulatorFacade,
