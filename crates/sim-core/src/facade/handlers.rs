@@ -57,14 +57,9 @@ impl SimulatorFacade {
                 order_id,
                 quote,
                 config,
-            } => self.handle_f1_quote(
-                order_id,
-                quote,
-                config,
-                cause,
-                logical_ts_ns,
-                &mut events,
-            )?,
+            } => {
+                self.handle_f1_quote(order_id, quote, config, cause, logical_ts_ns, &mut events)?
+            }
             FacadeInput::ExecuteF1Trade {
                 order_id,
                 trade,
@@ -133,7 +128,11 @@ impl SimulatorFacade {
     ) -> Result<(), FacadeError> {
         let id = self.resolve_order_id(order_id)?;
         self.orders.cancel(id).map_err(FacadeError::from_order)?;
-        emit(events, cause, DomainEventPayload::OrderCancelled { order_id: id })
+        emit(
+            events,
+            cause,
+            DomainEventPayload::OrderCancelled { order_id: id },
+        )
     }
 
     fn handle_replace(
@@ -171,7 +170,8 @@ impl SimulatorFacade {
         self.observe_market_seq(bar.event_seq)?;
         let id = self.resolve_order_id(order_id)?;
         let side = self.order_side(id)?;
-        let outcome = execute_bar(&mut self.orders, id, bar, config).map_err(FacadeError::from_f0)?;
+        let outcome =
+            execute_bar(&mut self.orders, id, bar, config).map_err(FacadeError::from_f0)?;
         let fills = outcome
             .fill_price
             .filter(|_| outcome.filled.get() > 0)
@@ -260,8 +260,7 @@ impl SimulatorFacade {
             .orders
             .get(id)
             .ok_or_else(|| FacadeError::new(FacadeErrorCode::UnknownOrder))?;
-        if order.time_in_force != TimeInForce::Gtc
-            || !matches!(order.kind, OrderKind::Limit { .. })
+        if order.time_in_force != TimeInForce::Gtc || !matches!(order.kind, OrderKind::Limit { .. })
         {
             return Err(FacadeError::new(
                 FacadeErrorCode::UnsupportedOrderCombination,
@@ -357,8 +356,8 @@ impl SimulatorFacade {
             .f2_book
             .take()
             .ok_or_else(|| FacadeError::new(FacadeErrorCode::InvalidSnapshot))?;
-        let outcome = execute_taker(&mut self.orders, &mut book, id, config)
-            .map_err(FacadeError::from_f2)?;
+        let outcome =
+            execute_taker(&mut self.orders, &mut book, id, config).map_err(FacadeError::from_f2)?;
         self.f2_book = Some(book);
         let fills = outcome
             .levels
