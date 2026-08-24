@@ -376,6 +376,8 @@ pub enum DomainEventPayload {
     },
     /// Economic position after one or more fills from the same input.
     PositionChanged(Position),
+    /// Exact realized trading P&L posted to the balanced ledger.
+    RealizedPnlPosted { amount: MoneyMinor },
     /// Exact fee/rebate posted for one fill.
     FeePosted {
         role: LiquidityRole,
