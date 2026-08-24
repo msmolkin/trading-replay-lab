@@ -4,6 +4,7 @@
 
 pub mod economics;
 pub mod execution;
+pub mod facade;
 pub mod hash;
 pub mod instrument;
 pub mod kernel;
@@ -12,6 +13,7 @@ pub mod numeric;
 pub mod orders;
 pub mod positions;
 pub mod risk;
+pub mod snapshot;
 
 /// Package identifier used by bootstrap smoke tests and diagnostics.
 pub const PACKAGE_NAME: &str = "sim-core";
