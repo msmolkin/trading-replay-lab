@@ -7,9 +7,7 @@ use crate::execution::f2::{F2Error, L2Delta, L2Snapshot, SweepConfig};
 use crate::kernel::{InputEnvelope, KernelError, KernelEvent};
 use crate::ledger::{LedgerError, LedgerSnapshot};
 use crate::numeric::{MoneyMinor, PriceAtoms, QtyAtoms, RatePpb};
-use crate::orders::{
-    NewOrder, Order, OrderError, OrderId, OrderState, OrderStatus, ReplaceOrder, TopOfBook,
-};
+use crate::orders::{NewOrder, Order, OrderError, OrderId, OrderStatus, ReplaceOrder, TopOfBook};
 use crate::positions::{Position, PositionError, PositionMath};
 use crate::risk::{Leverage, LiquidationState, MarginSnapshot, RiskError, RiskProfile};
 
@@ -415,9 +413,6 @@ pub struct DomainEvent {
     /// Typed domain result.
     pub payload: DomainEventPayload,
 }
-
-/// Alias used by snapshot validation helpers without exposing facade internals.
-pub(crate) type FacadeOrderState = OrderState;
 
 fn math_is_consistent(position: PositionMath, risk: RiskProfile) -> bool {
     let economics = risk.math;
