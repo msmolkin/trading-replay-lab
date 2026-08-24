@@ -69,7 +69,9 @@ impl Parser<'_> {
     }
 
     fn take(&mut self) -> Result<u8, JsonError> {
-        let byte = self.peek().ok_or_else(|| self.error(JsonErrorKind::UnexpectedEnd))?;
+        let byte = self
+            .peek()
+            .ok_or_else(|| self.error(JsonErrorKind::UnexpectedEnd))?;
         self.offset += 1;
         Ok(byte)
     }
