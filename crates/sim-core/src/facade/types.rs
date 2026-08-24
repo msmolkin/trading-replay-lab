@@ -4,7 +4,7 @@ use crate::economics::{EconomicsError, LiquidityRole, ScheduledEconomicId};
 use crate::execution::f0::{Bar, F0Config, F0Error};
 use crate::execution::f1::{BboQuote, F1Config, F1Error, TradePrint};
 use crate::execution::f2::{F2Error, L2Delta, L2Snapshot, SweepConfig};
-use crate::kernel::{InputEnvelope, KernelError, KernelEvent};
+use crate::kernel::{KernelError, KernelEvent};
 use crate::ledger::{LedgerError, LedgerSnapshot};
 use crate::numeric::{MoneyMinor, PriceAtoms, QtyAtoms, RatePpb};
 use crate::orders::{NewOrder, Order, OrderError, OrderId, OrderStatus, ReplaceOrder, TopOfBook};
@@ -84,7 +84,7 @@ pub struct FacadeRules {
 pub struct FacadeConfig {
     /// Public compatibility version.
     pub api_version: u16,
-    /// Session identity required on every [`InputEnvelope`].
+    /// Session identity required on every [`crate::kernel::InputEnvelope`].
     pub session_id: String,
     /// Single authoritative instrument handled by this facade instance.
     pub instrument_id: String,
