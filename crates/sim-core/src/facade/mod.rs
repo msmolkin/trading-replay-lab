@@ -5,17 +5,14 @@ mod types;
 
 pub use types::{
     DomainEvent, DomainEventPayload, ExecutionFill, ExecutionModelRegistry, ExecutionTier,
-    FacadeConfig, FacadeError, FacadeErrorCode, FacadeInitialState, FacadeInput, FacadeRules,
-    FundingInput, ReplaceOrderInput, SubmitOrderInput, FACADE_API_VERSION,
+    FACADE_API_VERSION, FacadeConfig, FacadeError, FacadeErrorCode, FacadeInitialState,
+    FacadeInput, FacadeRules, FundingInput, ReplaceOrderInput, SubmitOrderInput,
 };
 
-use crate::economics::{
-    EconomicsState, ExecutionFeeInput, LiquidityRole, ScheduledCashFlow,
-};
+use crate::economics::{EconomicsState, ExecutionFeeInput, LiquidityRole, ScheduledCashFlow};
 use crate::execution::f0::{UncertaintyFlag, execute_bar};
 use crate::execution::f1::{
-    DisplayedAheadQueue, F1LiquidityRole, F1Uncertainty, execute_on_quote,
-    execute_resting_on_trade,
+    DisplayedAheadQueue, F1LiquidityRole, F1Uncertainty, execute_on_quote, execute_resting_on_trade,
 };
 use crate::execution::f2::{L2Book, execute_taker};
 use crate::kernel::{InputEnvelope, Kernel, KernelEvent};
@@ -210,11 +207,7 @@ impl SimulatorFacade {
                 self.validate_submission_frontier(input.request.submitted_at_event_seq)?;
                 let outcome = self
                     .orders
-                    .submit(
-                        input.request,
-                        self.position.quantity_atoms,
-                        input.quote,
-                    )
+                    .submit(input.request, self.position.quantity_atoms, input.quote)
                     .map_err(FacadeError::from_order)?;
                 let order = self
                     .orders
@@ -251,11 +244,7 @@ impl SimulatorFacade {
                     .get(id)
                     .ok_or_else(|| FacadeError::new(FacadeErrorCode::UnknownOrder))?
                     .clone();
-                emit(
-                    &mut events,
-                    cause,
-                    DomainEventPayload::OrderReplaced(order),
-                )?;
+                emit(&mut events, cause, DomainEventPayload::OrderReplaced(order))?;
             }
             FacadeInput::ExecuteF0 {
                 order_id,
@@ -266,8 +255,8 @@ impl SimulatorFacade {
                 self.observe_market_seq(bar.event_seq)?;
                 let id = self.resolve_order_id(order_id)?;
                 let side = self.order_side(id)?;
-                let outcome = execute_bar(&mut self.orders, id, bar, config)
-                    .map_err(FacadeError::from_f0)?;
+                let outcome =
+                    execute_bar(&mut self.orders, id, bar, config).map_err(FacadeError::from_f0)?;
                 let fills = outcome
                     .fill_price
                     .filter(|_| outcome.filled.get() > 0)
@@ -644,9 +633,7 @@ fn validate_f2_snapshot_state(
 ) -> Result<(), FacadeError> {
     match (tier, book) {
         (ExecutionTier::F2, Some(book)) => {
-            if book.sequence() != market_event_seq
-                || book.is_enabled() != market_event_seq.is_some()
-            {
+            if book.sequence() != market_event_seq || book.is_enabled() != market_event_seq.is_some() {
                 return Err(FacadeError::new(FacadeErrorCode::InvalidSnapshot));
             }
         }
