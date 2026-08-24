@@ -184,10 +184,9 @@ impl SimulatorFacade {
         }
         let command = FacadeInput::decode(&input.kind, &input.payload)?;
         let f2_delta_context = match &command {
-            FacadeInput::F2Delta(delta) => Some((
-                *delta,
-                self.f2_book().is_some_and(L2Book::is_enabled),
-            )),
+            FacadeInput::F2Delta(delta) => {
+                Some((*delta, self.f2_book().is_some_and(L2Book::is_enabled)))
+            }
             _ => None,
         };
         let mut next = self.clone();
