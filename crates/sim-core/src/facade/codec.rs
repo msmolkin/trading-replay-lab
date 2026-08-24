@@ -466,7 +466,7 @@ fn read_optional_qty(reader: &mut PayloadReader<'_>) -> Result<Option<QtyAtoms>,
 }
 
 fn write_bool(writer: &mut CanonicalWriter, value: bool) {
-    writer.u64(if value { 1 } else { 0 });
+    writer.u64(u64::from(value));
 }
 
 fn invalid_payload() -> FacadeError {
