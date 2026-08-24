@@ -73,8 +73,7 @@ impl ProofBundle {
         if version != PROOF_VERSION {
             return Err(format_failure("unsupported verification_version"));
         }
-        let session_id =
-            nonempty_text(required(root, "session_id")?, "session_id")?.to_owned();
+        let session_id = nonempty_text(required(root, "session_id")?, "session_id")?.to_owned();
         let manifest_hashes =
             parse_hash_array(required(root, "manifest_hashes")?, "manifest_hashes")?;
         let manifest_set_hash =
@@ -179,9 +178,7 @@ fn parse_inputs(value: &JsonValue) -> Result<Vec<InputEnvelope>, VerificationFai
     array(value, "inputs")?
         .iter()
         .enumerate()
-        .map(|(index, value)| {
-            parse_input(value).map_err(|failure| with_index(failure, index))
-        })
+        .map(|(index, value)| parse_input(value).map_err(|failure| with_index(failure, index)))
         .collect()
 }
 
@@ -225,10 +222,7 @@ fn parse_kernel_event(value: &JsonValue) -> Result<DeclaredKernelEvent, Verifica
         logical_ts_ns: decimal_i64(required(fields, "logical_ts_ns")?, "logical_ts_ns")?,
         kind: nonempty_text(required(fields, "kind")?, "kind")?.to_owned(),
         payload_hash: hash_value(required(fields, "payload_hash")?, "payload_hash")?,
-        prior_event_hash: hash_value(
-            required(fields, "prior_event_hash")?,
-            "prior_event_hash",
-        )?,
+        prior_event_hash: hash_value(required(fields, "prior_event_hash")?, "prior_event_hash")?,
         current_event_hash: hash_value(
             required(fields, "current_event_hash")?,
             "current_event_hash",
@@ -240,9 +234,7 @@ fn parse_state_hashes(value: &JsonValue) -> Result<Vec<StateHash>, VerificationF
     array(value, "state_hashes")?
         .iter()
         .enumerate()
-        .map(|(index, value)| {
-            parse_state_hash(value).map_err(|failure| with_index(failure, index))
-        })
+        .map(|(index, value)| parse_state_hash(value).map_err(|failure| with_index(failure, index)))
         .collect()
 }
 
@@ -272,11 +264,8 @@ fn parse_ledger_transaction(value: &JsonValue) -> Result<LedgerTransaction, Veri
         .collect::<Result<Vec<_>, VerificationFailure>>()?;
     Ok(LedgerTransaction {
         event_seq: decimal_u64(required(fields, "event_seq")?, "event_seq")?,
-        transaction_id: nonempty_text(
-            required(fields, "transaction_id")?,
-            "transaction_id",
-        )?
-        .to_owned(),
+        transaction_id: nonempty_text(required(fields, "transaction_id")?, "transaction_id")?
+            .to_owned(),
         postings,
     })
 }
@@ -298,10 +287,7 @@ fn parse_metrics(value: &JsonValue) -> Result<ResultMetrics, VerificationFailure
             required(fields, "terminal_return_ppb")?,
             "terminal_return_ppb",
         )?,
-        max_drawdown_ppb: decimal_i64(
-            required(fields, "max_drawdown_ppb")?,
-            "max_drawdown_ppb",
-        )?,
+        max_drawdown_ppb: decimal_i64(required(fields, "max_drawdown_ppb")?, "max_drawdown_ppb")?,
         peak_effective_leverage_ppb: decimal_i64(
             required(fields, "peak_effective_leverage_ppb")?,
             "peak_effective_leverage_ppb",
