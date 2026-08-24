@@ -179,7 +179,9 @@ class ReplayCoordinator:
                 limit=batch_size,
             )
             if len(batch) > batch_size:
-                raise ReplayError(ReplayErrorCode.SOURCE_SEQUENCE, "source exceeded requested limit")
+                raise ReplayError(
+                    ReplayErrorCode.SOURCE_SEQUENCE, "source exceeded requested limit"
+                )
             if not batch:
                 break
             for item in batch:
