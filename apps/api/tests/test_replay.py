@@ -246,9 +246,7 @@ def test_missing_post_advance_checkpoint_is_recovered_exactly() -> None:
     assert recovered.applied_inputs == 0
     assert recovered.recovered_inputs == 1
     assert recovered.checkpoint == uninterrupted
-    assert store.load_latest(
-        session_id="session-1", principal_id="principal-1"
-    ) == uninterrupted
+    assert store.load_latest(session_id="session-1", principal_id="principal-1") == uninterrupted
 
 
 def test_source_sequence_gap_fails_before_persisting_checkpoint() -> None:
