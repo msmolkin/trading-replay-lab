@@ -118,10 +118,8 @@ fn valid_bundle_reproduces_result_and_ledger() {
 
 #[test]
 fn tampered_command_identifies_event_mismatch() {
-    let json = valid_bundle_json().replace(
-        "\"payload_hex\":\"616263\"",
-        "\"payload_hex\":\"616264\"",
-    );
+    let json =
+        valid_bundle_json().replace("\"payload_hex\":\"616263\"", "\"payload_hex\":\"616264\"");
     let report = verify_bytes(json.as_bytes());
     assert_eq!(
         report.failure.as_ref().map(|failure| failure.code),
@@ -167,10 +165,7 @@ fn tampered_manifest_identifies_manifest_commitment() {
 
 #[test]
 fn unbalanced_ledger_fails_at_transaction() {
-    let json = valid_bundle_json().replace(
-        "\"amount_minor\":\"-10\"",
-        "\"amount_minor\":\"-9\"",
-    );
+    let json = valid_bundle_json().replace("\"amount_minor\":\"-10\"", "\"amount_minor\":\"-9\"");
     let report = verify_bytes(json.as_bytes());
     assert_eq!(
         report.failure.as_ref().map(|failure| failure.code),
