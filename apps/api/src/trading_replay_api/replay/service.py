@@ -87,7 +87,7 @@ class ReplayCoordinator:
             batch_size=batch_size,
         )
         checkpoint = recovered.checkpoint
-        if recovered.applied_inputs > 0 or checkpoint.logical_time_ns != session.logical_time_ns:
+        if checkpoint.logical_time_ns != session.logical_time_ns:
             raise ReplayError(
                 ReplayErrorCode.SNAPSHOT_CORRUPT,
                 "recovery did not land on the persisted logical frontier",
