@@ -63,7 +63,7 @@ fn initial() -> FacadeInitialState {
     }
 }
 
-fn apply(facade: &mut SimulatorFacade, input: FacadeInput, logical: i64) -> Vec<DomainEvent> {
+fn apply(facade: &mut SimulatorFacade, input: &FacadeInput, logical: i64) -> Vec<DomainEvent> {
     let sequence = facade.state_version();
     facade
         .apply(&input.envelope("session-1", sequence, sequence, logical))
@@ -88,7 +88,7 @@ fn market_order(submitted_at_event_seq: u64) -> NewOrder {
 fn submit(facade: &mut SimulatorFacade, market_seq: u64, logical: i64) -> OrderId {
     let events = apply(
         facade,
-        FacadeInput::SubmitOrder(SubmitOrderInput {
+        &FacadeInput::SubmitOrder(SubmitOrderInput {
             request: market_order(market_seq),
             quote: None,
         }),
@@ -180,7 +180,7 @@ fn f0_execution_updates_order_position_and_exact_fee() {
     let id = submit(&mut facade, 0, 1);
     let events = apply(
         &mut facade,
-        FacadeInput::ExecuteF0 {
+        &FacadeInput::ExecuteF0 {
             order_id: id.get(),
             bar: Bar {
                 event_seq: 1,
@@ -235,10 +235,10 @@ fn restored_f0_run_matches_uninterrupted_events_and_hashes() {
         },
         config: F0Config::default(),
     };
-    let expected = apply(&mut uninterrupted, execution.clone(), 2);
+    let expected = apply(&mut uninterrupted, &execution, 2);
 
     let mut restored = SimulatorFacade::from_snapshot(snapshot).unwrap();
-    let actual = apply(&mut restored, execution, 2);
+    let actual = apply(&mut restored, &execution, 2);
     assert_eq!(actual, expected);
     assert_eq!(restored.snapshot(), uninterrupted.snapshot());
     assert_eq!(
@@ -279,7 +279,7 @@ fn f2_snapshot_sweep_and_restore_preserve_depth_continuity() {
     let mut facade = SimulatorFacade::new(config(ExecutionTier::F2), initial()).unwrap();
     apply(
         &mut facade,
-        FacadeInput::F2Snapshot(L2Snapshot {
+        &FacadeInput::F2Snapshot(L2Snapshot {
             sequence: 5,
             bids: vec![DepthLevel {
                 price: PriceAtoms::new(99),
@@ -298,9 +298,9 @@ fn f2_snapshot_sweep_and_restore_preserve_depth_continuity() {
         order_id: id.get(),
         config: SweepConfig::default(),
     };
-    let expected = apply(&mut facade, execution.clone(), 3);
+    let expected = apply(&mut facade, &execution, 3);
     let mut restored = SimulatorFacade::from_snapshot(snapshot).unwrap();
-    let actual = apply(&mut restored, execution, 3);
+    let actual = apply(&mut restored, &execution, 3);
     assert_eq!(actual, expected);
     assert_eq!(restored.snapshot(), facade.snapshot());
 }
@@ -336,14 +336,14 @@ fn funding_idempotency_survives_snapshot_restore() {
         id: ScheduledEconomicId::new("provider", "funding-1").unwrap(),
         cash_delta: MoneyMinor::new(-7),
     });
-    let first = apply(&mut facade, funding.clone(), 1);
+    let first = apply(&mut facade, &funding, 1);
     assert!(matches!(
         first[0].payload,
         DomainEventPayload::FundingProcessed { posted: true, .. }
     ));
     let snapshot = facade.snapshot();
     let mut restored = SimulatorFacade::from_snapshot(snapshot).unwrap();
-    let second = apply(&mut restored, funding, 2);
+    let second = apply(&mut restored, &funding, 2);
     assert!(matches!(
         second[0].payload,
         DomainEventPayload::FundingProcessed { posted: false, .. }
@@ -370,7 +370,7 @@ fn risk_paths_remain_exact_and_versioned() {
     let mut facade = SimulatorFacade::new(config(ExecutionTier::F0), initial()).unwrap();
     let leverage = apply(
         &mut facade,
-        FacadeInput::SetLeverage {
+        &FacadeInput::SetLeverage {
             leverage: 5,
             equity: MoneyMinor::new(1_000),
             mark_price: PriceAtoms::new(100),
@@ -383,7 +383,7 @@ fn risk_paths_remain_exact_and_versioned() {
     ));
     let risk = apply(
         &mut facade,
-        FacadeInput::EvaluateRisk {
+        &FacadeInput::EvaluateRisk {
             equity: MoneyMinor::new(0),
             mark_price: PriceAtoms::new(100),
         },
