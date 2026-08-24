@@ -249,11 +249,12 @@ def test_missing_post_advance_checkpoint_is_recovered_exactly() -> None:
     assert store.load_latest(session_id="session-1", principal_id="principal-1") == uninterrupted
 
 
-def test_source_sequence_gap_fails_before_persisting_checkpoint() -> None:
+def test_source_sequence_gap_preserves_only_verified_frontier_checkpoint() -> None:
     gapped = (events()[0], events()[2])
     store = checkpoint_store()
+    lifecycle = FakeLifecycle(running_session())
     coordinator = ReplayCoordinator(
-        lifecycle=FakeLifecycle(running_session()),
+        lifecycle=lifecycle,
         source=FakeSource(gapped),
         simulator=FakeSimulator(),
         checkpoints=store,
@@ -267,7 +268,13 @@ def test_source_sequence_gap_fails_before_persisting_checkpoint() -> None:
             target_logical_time_ns=20,
         )
     assert caught.value.code is ReplayErrorCode.SOURCE_SEQUENCE
-    assert store.load_latest(session_id="session-1", principal_id="principal-1") is None
+    assert lifecycle.session.version == 2
+    assert lifecycle.session.logical_time_ns == 10
+    checkpoint = store.load_latest(session_id="session-1", principal_id="principal-1")
+    assert checkpoint is not None
+    assert checkpoint.logical_time_ns == 10
+    assert checkpoint.source_event_seq == 0
+    assert checkpoint.simulator.state_version == 1
 
 
 def test_float_replay_payload_fails_closed() -> None:
