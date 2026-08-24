@@ -13,8 +13,7 @@ mod ledger;
 pub use ledger::LedgerInspection;
 
 use bundle::{
-    ProofBundle, manifest_commitment, result_commitment, state_hash_commitment,
-    verify_state_hashes,
+    ProofBundle, manifest_commitment, result_commitment, state_hash_commitment, verify_state_hashes,
 };
 use ledger::verify_ledger;
 use sim_core::hash::{ZERO_HASH, hash_hex};
@@ -94,11 +93,7 @@ pub struct VerificationFailure {
 }
 
 impl VerificationFailure {
-    fn new(
-        code: VerificationFailureCode,
-        index: Option<usize>,
-        detail: impl Into<String>,
-    ) -> Self {
+    fn new(code: VerificationFailureCode, index: Option<usize>, detail: impl Into<String>) -> Self {
         Self {
             code,
             index,
