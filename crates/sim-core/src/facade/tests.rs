@@ -85,6 +85,14 @@ fn market_order(submitted_at_event_seq: u64) -> NewOrder {
     }
 }
 
+fn sell_market_order(submitted_at_event_seq: u64) -> NewOrder {
+    NewOrder {
+        side: Side::Sell,
+        client_order_id: format!("sell-{submitted_at_event_seq}"),
+        ..market_order(submitted_at_event_seq)
+    }
+}
+
 fn submit(facade: &mut SimulatorFacade, market_seq: u64, logical: i64) -> OrderId {
     let events = apply(
         facade,
@@ -219,6 +227,80 @@ fn f0_execution_updates_order_position_and_exact_fee() {
 }
 
 #[test]
+fn closing_fill_posts_realized_pnl_to_balanced_ledger() {
+    let mut facade = SimulatorFacade::new(config(ExecutionTier::F0), initial()).unwrap();
+    let buy_id = submit(&mut facade, 0, 1);
+    apply(
+        &mut facade,
+        &FacadeInput::ExecuteF0 {
+            order_id: buy_id.get(),
+            bar: Bar {
+                event_seq: 1,
+                open: PriceAtoms::new(100),
+                high: PriceAtoms::new(100),
+                low: PriceAtoms::new(100),
+                close: PriceAtoms::new(100),
+                base_volume: QtyAtoms::new(10),
+            },
+            config: F0Config::default(),
+        },
+        2,
+    );
+    let submitted = apply(
+        &mut facade,
+        &FacadeInput::SubmitOrder(SubmitOrderInput {
+            request: sell_market_order(1),
+            quote: None,
+        }),
+        3,
+    );
+    let sell_id = match &submitted[0].payload {
+        DomainEventPayload::OrderSubmitted(order) => order.id,
+        _ => panic!("expected submitted sell order"),
+    };
+    let events = apply(
+        &mut facade,
+        &FacadeInput::ExecuteF0 {
+            order_id: sell_id.get(),
+            bar: Bar {
+                event_seq: 2,
+                open: PriceAtoms::new(110),
+                high: PriceAtoms::new(110),
+                low: PriceAtoms::new(110),
+                close: PriceAtoms::new(110),
+                base_volume: QtyAtoms::new(10),
+            },
+            config: F0Config::default(),
+        },
+        4,
+    );
+
+    assert!(events.iter().any(|event| {
+        matches!(
+            event.payload,
+            DomainEventPayload::RealizedPnlPosted {
+                amount: MoneyMinor::new(20)
+            }
+        )
+    }));
+    assert_eq!(facade.position().quantity_atoms, 0);
+    assert_eq!(facade.position().average_entry_price, None);
+    assert_eq!(facade.position().realized_pnl, MoneyMinor::new(20));
+    assert_eq!(
+        facade.ledger().balance(LedgerAccount::RealizedPnl),
+        MoneyMinor::new(-20)
+    );
+    assert_eq!(
+        facade.ledger().balance(LedgerAccount::Fees),
+        MoneyMinor::new(4)
+    );
+    assert_eq!(
+        facade.ledger().balance(LedgerAccount::Cash),
+        MoneyMinor::new(16)
+    );
+}
+
+#[test]
 fn restored_f0_run_matches_uninterrupted_events_and_hashes() {
     let mut uninterrupted = SimulatorFacade::new(config(ExecutionTier::F0), initial()).unwrap();
     let id = submit(&mut uninterrupted, 0, 1);
@@ -330,7 +412,7 @@ fn inconsistent_f2_snapshot_frontier_is_rejected() {
 }
 
 #[test]
-fn funding_idempotency_survives_snapshot_restore() {
+fn funding_replay_at_different_sequence_fails_closed_after_restore() {
     let mut facade = SimulatorFacade::new(config(ExecutionTier::F0), initial()).unwrap();
     let funding = FacadeInput::Funding(FundingInput {
         id: ScheduledEconomicId::new("provider", "funding-1").unwrap(),
@@ -343,11 +425,14 @@ fn funding_idempotency_survives_snapshot_restore() {
     ));
     let snapshot = facade.snapshot();
     let mut restored = SimulatorFacade::from_snapshot(snapshot).unwrap();
-    let second = apply(&mut restored, &funding, 2);
-    assert!(matches!(
-        second[0].payload,
-        DomainEventPayload::FundingProcessed { posted: false, .. }
-    ));
+    let before = restored.snapshot();
+    let sequence = restored.state_version();
+    let envelope = funding.envelope("session-1", sequence, sequence, 2);
+    assert_eq!(
+        restored.apply(&envelope),
+        Err(FacadeError::new(FacadeErrorCode::EconomicsTransition))
+    );
+    assert_eq!(restored.snapshot(), before);
 }
 
 #[test]
