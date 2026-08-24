@@ -633,7 +633,9 @@ fn validate_f2_snapshot_state(
 ) -> Result<(), FacadeError> {
     match (tier, book) {
         (ExecutionTier::F2, Some(book)) => {
-            if book.sequence() != market_event_seq || book.is_enabled() != market_event_seq.is_some() {
+            if book.sequence() != market_event_seq
+                || book.is_enabled() != market_event_seq.is_some()
+            {
                 return Err(FacadeError::new(FacadeErrorCode::InvalidSnapshot));
             }
         }
