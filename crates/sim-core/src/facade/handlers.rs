@@ -8,6 +8,7 @@ use crate::execution::f1::{
 };
 use crate::execution::f2::{L2Delta, L2Snapshot, SweepConfig, execute_taker};
 use crate::kernel::KernelEvent;
+use crate::ledger::{LedgerAccount, NewTransaction, Posting};
 use crate::numeric::{MoneyMinor, PriceAtoms, QtyAtoms};
 use crate::orders::{OrderId, OrderKind, OrderStatus, Side, TimeInForce};
 use crate::positions::FillSide;
@@ -494,7 +495,8 @@ impl SimulatorFacade {
             return Ok(());
         }
         for fill in &fills {
-            self.position
+            let legs = self
+                .position
                 .apply_fill(
                     match side {
                         Side::Buy => FillSide::Buy,
@@ -505,6 +507,9 @@ impl SimulatorFacade {
                     self.config.rules.position_math,
                 )
                 .map_err(FacadeError::from_position)?;
+            for leg in legs {
+                self.post_realized_pnl(cause, events, leg.realized_pnl_delta)?;
+            }
             let rate = match fill.liquidity_role {
                 LiquidityRole::Maker => self.config.rules.maker_fee_rate,
                 LiquidityRole::Taker => self.config.rules.taker_fee_rate,
@@ -536,6 +541,43 @@ impl SimulatorFacade {
             events,
             cause,
             DomainEventPayload::PositionChanged(self.position),
+        )
+    }
+
+    fn post_realized_pnl(
+        &mut self,
+        cause: &KernelEvent,
+        events: &mut Vec<DomainEvent>,
+        amount: MoneyMinor,
+    ) -> Result<(), FacadeError> {
+        if amount.get() == 0 {
+            return Ok(());
+        }
+        let offset = amount
+            .get()
+            .checked_neg()
+            .map(MoneyMinor::new)
+            .ok_or_else(|| FacadeError::new(FacadeErrorCode::LedgerTransition))?;
+        self.ledger
+            .record(NewTransaction {
+                event_seq: cause.event_seq,
+                kind: "REALIZED_PNL".into(),
+                postings: vec![
+                    Posting {
+                        account: LedgerAccount::Cash,
+                        amount,
+                    },
+                    Posting {
+                        account: LedgerAccount::RealizedPnl,
+                        amount: offset,
+                    },
+                ],
+            })
+            .map_err(FacadeError::from_ledger)?;
+        emit(
+            events,
+            cause,
+            DomainEventPayload::RealizedPnlPosted { amount },
         )
     }
 
