@@ -275,13 +275,9 @@ fn closing_fill_posts_realized_pnl_to_balanced_ledger() {
         4,
     );
 
-    assert!(events.iter().any(|event| {
-        matches!(
-            event.payload,
-            DomainEventPayload::RealizedPnlPosted {
-                amount: MoneyMinor::new(20)
-            }
-        )
+    assert!(events.iter().any(|event| match event.payload {
+        DomainEventPayload::RealizedPnlPosted { amount } => amount == MoneyMinor::new(20),
+        _ => false,
     }));
     assert_eq!(facade.position().quantity_atoms, 0);
     assert_eq!(facade.position().average_entry_price, None);
