@@ -11,7 +11,7 @@ pub use types::{
 };
 
 use crate::economics::EconomicsState;
-use crate::execution::f2::L2Book;
+use crate::execution::f2::{F2Error, L2Book, L2Delta};
 use crate::kernel::{InputEnvelope, Kernel};
 use crate::ledger::Ledger;
 use crate::orders::OrderState;
@@ -164,12 +164,14 @@ impl SimulatorFacade {
     /// Applies one public input atomically and returns deterministic typed domain events.
     ///
     /// The complete facade is cloned first. Kernel sequence/version/hash validation and all
-    /// domain transitions occur on the clone, and real state is replaced only after dispatch
-    /// succeeds. Consequently an invalid payload, unsupported model, accounting failure, or
-    /// execution error cannot advance the hash chain or partially mutate economic state.
+    /// domain transitions occur on the clone. Ordinary invalid inputs roll back completely.
+    /// A malformed or discontinuous F2 delta is different: once the depth model detects that
+    /// reconstruction is untrustworthy, that historical input is consumed and the quarantined
+    /// disabled-book state is committed so stale depth can never become executable again.
     ///
     /// # Errors
-    /// Returns a stable [`FacadeErrorCode`] with no state mutation.
+    /// Returns a stable [`FacadeErrorCode`] with no state mutation, except for authoritative F2
+    /// depth invalidation described above.
     pub fn apply(&mut self, input: &InputEnvelope) -> Result<Vec<DomainEvent>, FacadeError> {
         if input.session_id != self.config.session_id {
             return Err(FacadeError::new(FacadeErrorCode::SessionMismatch));
@@ -181,13 +183,60 @@ impl SimulatorFacade {
             return Err(FacadeError::new(FacadeErrorCode::LogicalTimeRegression));
         }
         let command = FacadeInput::decode(&input.kind, &input.payload)?;
+        let f2_delta_context = match &command {
+            FacadeInput::F2Delta(delta) => Some((delta.clone(), self.f2_book().is_some_and(L2Book::is_enabled))),
+            _ => None,
+        };
         let mut next = self.clone();
         let cause = next.kernel.apply(input).map_err(FacadeError::from_kernel)?;
-        let events = next.dispatch(command, &cause, input.logical_ts_ns)?;
+        let dispatch = next.dispatch(command, &cause, input.logical_ts_ns);
+        let events = match dispatch {
+            Ok(events) => events,
+            Err(error) => {
+                let Some((delta, was_enabled)) = f2_delta_context else {
+                    return Err(error);
+                };
+                if error.code != FacadeErrorCode::F2Execution
+                    || next.f2_book().is_none_or(L2Book::is_enabled)
+                {
+                    return Err(error);
+                }
+                let reason = classify_depth_invalidation(&delta, next.f2_book(), was_enabled);
+                vec![DomainEvent {
+                    cause: cause.clone(),
+                    ordinal: 0,
+                    payload: DomainEventPayload::DepthInvalidated {
+                        sequence: delta.sequence,
+                        reason,
+                    },
+                }]
+            }
+        };
         next.last_logical_ts_ns = Some(input.logical_ts_ns);
         *self = next;
         Ok(events)
     }
+}
+
+fn classify_depth_invalidation(
+    delta: &L2Delta,
+    book: Option<&L2Book>,
+    was_enabled: bool,
+) -> F2Error {
+    if !was_enabled {
+        return F2Error::BookDisabled;
+    }
+    if delta.price.get() <= 0 {
+        return F2Error::InvalidBook;
+    }
+    if book.is_none_or(|book| {
+        book.sequence().is_none_or(|sequence| {
+            delta.previous_sequence != sequence || delta.sequence <= delta.previous_sequence
+        })
+    }) {
+        return F2Error::SequenceGap;
+    }
+    F2Error::InvalidBook
 }
 
 fn validate_f2_snapshot_state(
@@ -196,11 +245,19 @@ fn validate_f2_snapshot_state(
     book: Option<&L2Book>,
 ) -> Result<(), FacadeError> {
     match (tier, book) {
-        (ExecutionTier::F2, Some(book)) => {
-            if book.sequence() != market_event_seq
-                || book.is_enabled() != market_event_seq.is_some()
-            {
+        (ExecutionTier::F2, Some(book)) if book.is_enabled() => {
+            if market_event_seq.is_none() || book.sequence() != market_event_seq {
                 return Err(FacadeError::new(FacadeErrorCode::InvalidSnapshot));
+            }
+        }
+        (ExecutionTier::F2, Some(book)) => {
+            if let Some(sequence) = book.sequence() {
+                let Some(frontier) = market_event_seq else {
+                    return Err(FacadeError::new(FacadeErrorCode::InvalidSnapshot));
+                };
+                if sequence > frontier {
+                    return Err(FacadeError::new(FacadeErrorCode::InvalidSnapshot));
+                }
             }
         }
         (ExecutionTier::F2, None) => {
