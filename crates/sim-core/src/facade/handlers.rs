@@ -18,6 +18,7 @@ use super::{
     FacadeInput, FundingInput, ReplaceOrderInput, SimulatorFacade, SubmitOrderInput,
 };
 
+#[derive(Clone, Copy)]
 struct F1TradeRequest {
     order_id: u64,
     trade: TradePrint,
@@ -58,7 +59,7 @@ impl SimulatorFacade {
                 quote,
                 config,
             } => {
-                self.handle_f1_quote(order_id, quote, config, cause, logical_ts_ns, &mut events)?
+                self.handle_f1_quote(order_id, quote, config, cause, logical_ts_ns, &mut events)?;
             }
             FacadeInput::ExecuteF1Trade {
                 order_id,
