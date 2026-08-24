@@ -523,7 +523,10 @@ impl<'a> PayloadReader<'a> {
     }
 
     fn take(&mut self, length: usize) -> Result<&'a [u8], FacadeError> {
-        let end = self.offset.checked_add(length).ok_or_else(invalid_payload)?;
+        let end = self
+            .offset
+            .checked_add(length)
+            .ok_or_else(invalid_payload)?;
         let result = self
             .bytes
             .get(self.offset..end)
