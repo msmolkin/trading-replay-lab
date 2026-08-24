@@ -387,6 +387,8 @@ pub enum DomainEventPayload {
     DepthSnapshotApplied { sequence: u64 },
     /// F2 delta accepted.
     DepthDeltaApplied { sequence: u64 },
+    /// F2 continuity or structural validation failed and depth is quarantined.
+    DepthInvalidated { sequence: u64, reason: F2Error },
     /// Isolated leverage changed after a successful precheck.
     LeverageChanged {
         leverage: u8,
