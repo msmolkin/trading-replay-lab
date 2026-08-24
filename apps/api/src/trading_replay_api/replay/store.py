@@ -77,7 +77,8 @@ class ReplayCheckpointStore:
                     if (
                         int(existing.state_version) == checkpoint.simulator.state_version
                         and str(existing.state_hash) == checkpoint.simulator.state_hash
-                        and canonical_json(_mapping(existing.state_json)) == canonical_json(state_json)
+                        and canonical_json(_mapping(existing.state_json))
+                        == canonical_json(state_json)
                     ):
                         return
                     raise ReplayError(
@@ -115,7 +116,9 @@ class PersistedEventPublisher:
         limit: int = 256,
     ) -> tuple[PersistedReplayEvent, ...]:
         """Read a monotonic principal-scoped page from the persisted event stream."""
-        if after_event_seq is not None and (isinstance(after_event_seq, bool) or after_event_seq < 0):
+        if after_event_seq is not None and (
+            isinstance(after_event_seq, bool) or after_event_seq < 0
+        ):
             raise ValueError("after_event_seq must be nonnegative")
         if isinstance(limit, bool) or limit <= 0 or limit > 10_000:
             raise ValueError("limit must be between 1 and 10000")
@@ -174,7 +177,9 @@ def _decode_checkpoint(raw: object, state_version: int, state_hash: str) -> Repl
     except (TypeError, ValueError, ReplayError) as error:
         if isinstance(error, ReplayError):
             raise
-        raise ReplayError(ReplayErrorCode.SNAPSHOT_CORRUPT, "stored replay checkpoint is invalid") from error
+        raise ReplayError(
+            ReplayErrorCode.SNAPSHOT_CORRUPT, "stored replay checkpoint is invalid"
+        ) from error
 
 
 def _canonical_int(value: object, name: str) -> int:
