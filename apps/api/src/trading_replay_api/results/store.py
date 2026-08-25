@@ -65,7 +65,7 @@ class ResultStore:
                     ResultErrorCode.PERSISTED_CONFLICT,
                     "completed session references a missing ruleset",
                 )
-            ruleset = {
+            ruleset: dict[str, object] = {
                 "ruleset_id": str(ruleset_row.ruleset_id),
                 "ruleset_version": str(ruleset_row.ruleset_version),
                 "ruleset_hash": str(ruleset_row.ruleset_hash),
@@ -84,7 +84,7 @@ class ResultStore:
                 .where(commands.c.session_id == session_id)
                 .order_by(commands.c.expected_session_version, commands.c.command_id)
             )
-            command_values = tuple(
+            command_values: tuple[dict[str, object], ...] = tuple(
                 {
                     "command_id": str(row.command_id),
                     "idempotency_key": str(row.idempotency_key),
@@ -110,7 +110,7 @@ class ResultStore:
                 .where(domain_events.c.session_id == session_id)
                 .order_by(domain_events.c.event_seq)
             )
-            event_values = tuple(
+            event_values: tuple[dict[str, object], ...] = tuple(
                 {
                     "event_seq": int(row.event_seq),
                     "logical_ts_ns": int(row.logical_ts_ns),
@@ -138,7 +138,7 @@ class ResultStore:
                 .where(commitments.c.session_id == session_id)
                 .order_by(commitments.c.kind, commitments.c.commitment_id)
             )
-            commitment_values = tuple(
+            commitment_values: tuple[dict[str, object], ...] = tuple(
                 {
                     "commitment_id": str(row.commitment_id),
                     "kind": str(row.kind),
