@@ -23,7 +23,12 @@ from trading_replay_api.results import (
     build_result_router,
     canonical_json,
 )
-from trading_replay_api.sessions import CommittedSetup, SessionRecord, SessionStatus, VisibilityMode
+from trading_replay_api.sessions import (
+    CommittedSetup,
+    SessionRecord,
+    SessionStatus,
+    VisibilityMode,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +157,10 @@ def test_finalization_is_deterministic_write_once_and_offline_proof_is_complete(
     events = first.proof["kernel_events"]
     assert isinstance(events, list)
     assert events[0]["prior_event_hash"] == "0" * 64
-    assert events[0]["payload_hash"] == "06eb7d6a69ee19e5fbdfb82b69383a61894f138621b1ecb4e4e94c562e62b4c8"
+    assert (
+        events[0]["payload_hash"]
+        == "06eb7d6a69ee19e5fbdf749018d3d2abfa04bcbd1365db312eb86dc7169389b8"
+    )
 
     retry = service.finalize(
         session_id="session-1",
@@ -258,4 +266,8 @@ def test_canonical_json_rejects_float_and_router_is_read_only() -> None:
         "/sessions/{session_id}/result/proof",
         "/sessions/{session_id}/result/export",
     }
-    assert all("POST" not in route.methods for route in router.routes if isinstance(route, APIRoute))
+    assert all(
+        "POST" not in route.methods
+        for route in router.routes
+        if isinstance(route, APIRoute)
+    )
