@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Annotated, cast
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from trading_replay_api.auth import AuthenticationError, Authenticator
@@ -18,9 +21,9 @@ def build_market_router(*, service: MarketService, authenticator: Authenticator)
     def trades(
         session_id: str,
         request: Request,
-        start_offset_ns: str = Query("0"),
-        after_sequence: str | None = Query(None),
-        limit: int = Query(250, ge=1, le=1_000),
+        start_offset_ns: Annotated[str, Query()] = "0",
+        after_sequence: Annotated[str | None, Query()] = None,
+        limit: Annotated[int, Query(ge=1, le=1_000)] = 250,
     ) -> dict[str, object]:
         principal_id = _authenticate(authenticator, request)
         return _page(
@@ -38,9 +41,9 @@ def build_market_router(*, service: MarketService, authenticator: Authenticator)
     def bbo(
         session_id: str,
         request: Request,
-        start_offset_ns: str = Query("0"),
-        after_sequence: str | None = Query(None),
-        limit: int = Query(250, ge=1, le=1_000),
+        start_offset_ns: Annotated[str, Query()] = "0",
+        after_sequence: Annotated[str | None, Query()] = None,
+        limit: Annotated[int, Query(ge=1, le=1_000)] = 250,
     ) -> dict[str, object]:
         principal_id = _authenticate(authenticator, request)
         return _page(
@@ -58,9 +61,9 @@ def build_market_router(*, service: MarketService, authenticator: Authenticator)
     def depth(
         session_id: str,
         request: Request,
-        start_offset_ns: str = Query("0"),
-        after_sequence: str | None = Query(None),
-        limit: int = Query(100, ge=1, le=1_000),
+        start_offset_ns: Annotated[str, Query()] = "0",
+        after_sequence: Annotated[str | None, Query()] = None,
+        limit: Annotated[int, Query(ge=1, le=1_000)] = 100,
     ) -> dict[str, object]:
         principal_id = _authenticate(authenticator, request)
         return _page(
@@ -78,9 +81,9 @@ def build_market_router(*, service: MarketService, authenticator: Authenticator)
     def candles(
         session_id: str,
         request: Request,
-        interval_ns: str = Query(...),
-        start_offset_ns: str = Query("0"),
-        limit: int = Query(250, ge=1, le=1_000),
+        interval_ns: Annotated[str, Query()],
+        start_offset_ns: Annotated[str, Query()] = "0",
+        limit: Annotated[int, Query(ge=1, le=1_000)] = 250,
     ) -> dict[str, object]:
         principal_id = _authenticate(authenticator, request)
         return _page(
@@ -108,7 +111,8 @@ def _invoke(function: object, /, **kwargs: object) -> MarketPage:
     try:
         if not callable(function):
             raise RuntimeError("market service method is not callable")
-        result = function(**kwargs)
+        callable_function = cast(Callable[..., object], function)
+        result = callable_function(**kwargs)
         if not isinstance(result, MarketPage):
             raise RuntimeError("market service returned unexpected result")
         return result
