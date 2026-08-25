@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
 from trading_replay_api.commands import VisibleQuote
-from trading_replay_api.sessions import SessionLifecycleError, SessionRecord, VisibilityMode
+from trading_replay_api.sessions import (
+    CommittedSetup,
+    SessionLifecycleError,
+    SessionRecord,
+    VisibilityMode,
+)
 
 from .model import (
     Bbo,
@@ -79,9 +84,10 @@ class MarketService:
             return self._cache[cache_key]
         if context.frontier_ns is None:
             return self._cache_empty(cache_key, context)
+        setup = _setup(context)
         events = self.source.trades(
-            manifest_hash=_setup(context).manifest_hash,
-            instrument_id=_setup(context).instrument_id,
+            manifest_hash=setup.manifest_hash,
+            instrument_id=setup.instrument_id,
             start_ns=context.start_ns,
             through_ns=context.frontier_ns,
             after_source_sequence=after_sequence,
@@ -112,9 +118,10 @@ class MarketService:
             return self._cache[cache_key]
         if context.frontier_ns is None:
             return self._cache_empty(cache_key, context)
+        setup = _setup(context)
         events = self.source.bbo(
-            manifest_hash=_setup(context).manifest_hash,
-            instrument_id=_setup(context).instrument_id,
+            manifest_hash=setup.manifest_hash,
+            instrument_id=setup.instrument_id,
             start_ns=context.start_ns,
             through_ns=context.frontier_ns,
             after_source_sequence=after_sequence,
@@ -145,9 +152,10 @@ class MarketService:
             return self._cache[cache_key]
         if context.frontier_ns is None:
             return self._cache_empty(cache_key, context)
+        setup = _setup(context)
         events = self.source.depth(
-            manifest_hash=_setup(context).manifest_hash,
-            instrument_id=_setup(context).instrument_id,
+            manifest_hash=setup.manifest_hash,
+            instrument_id=setup.instrument_id,
             start_ns=context.start_ns,
             through_ns=context.frontier_ns,
             after_source_sequence=after_sequence,
@@ -185,21 +193,7 @@ class MarketService:
             return self._cache[cache_key]
         if context.frontier_ns is None:
             return self._cache_empty(cache_key, context)
-        source_limit = min(MAX_PAGE_SIZE, max(limit * 16, limit))
-        raw = self.source.trades(
-            manifest_hash=_setup(context).manifest_hash,
-            instrument_id=_setup(context).instrument_id,
-            start_ns=context.start_ns,
-            through_ns=context.frontier_ns,
-            after_source_sequence=None,
-            limit=source_limit,
-        )
-        visible = self._visible(raw, context, None, source_limit)
-        buckets: dict[int, list[Trade]] = {}
-        play_start_ns = _setup(context).play_start_ns
-        for trade in visible:
-            bucket = (trade.ts_ns - play_start_ns) // interval_ns
-            buckets.setdefault(bucket, []).append(trade)
+        buckets = self._candle_buckets(context, interval_ns, limit)
         items = tuple(
             self._project_candle(context, bucket, interval_ns, trades)
             for bucket, trades in sorted(buckets.items())[:limit]
@@ -284,9 +278,50 @@ class MarketService:
             if context.start_ns <= event.ts_ns <= frontier
             and (after_sequence is None or event.source_sequence > after_sequence)
         )
+        self._validate_source_order(visible, after_sequence)
+        return visible[:limit]
+
+    def _candle_buckets(
+        self, context: _Context, interval_ns: int, limit: int
+    ) -> dict[int, list[Trade]]:
+        setup = _setup(context)
+        frontier = context.frontier_ns
+        if frontier is None:
+            return {}
+        buckets: dict[int, list[Trade]] = {}
+        after_sequence: int | None = None
+        while len(buckets) < limit:
+            raw = self.source.trades(
+                manifest_hash=setup.manifest_hash,
+                instrument_id=setup.instrument_id,
+                start_ns=context.start_ns,
+                through_ns=frontier,
+                after_source_sequence=after_sequence,
+                limit=MAX_PAGE_SIZE,
+            )
+            if not raw:
+                break
+            self._validate_source_order(raw, after_sequence)
+            for trade in raw:
+                if context.start_ns <= trade.ts_ns <= frontier:
+                    bucket = (trade.ts_ns - setup.play_start_ns) // interval_ns
+                    buckets.setdefault(bucket, []).append(trade)
+            next_after = raw[-1].source_sequence
+            if after_sequence is not None and next_after <= after_sequence:
+                raise MarketServiceError(
+                    MarketErrorCode.SOURCE_ORDER,
+                    "market source pagination did not advance",
+                )
+            after_sequence = next_after
+            if len(raw) < MAX_PAGE_SIZE:
+                break
+        return buckets
+
+    @staticmethod
+    def _validate_source_order(events: Sequence[T], after_sequence: int | None) -> None:
         prior_sequence = after_sequence
         prior_ts: int | None = None
-        for event in visible:
+        for event in events:
             if prior_sequence is not None and event.source_sequence <= prior_sequence:
                 raise MarketServiceError(
                     MarketErrorCode.SOURCE_ORDER,
@@ -299,7 +334,6 @@ class MarketService:
                 )
             prior_sequence = event.source_sequence
             prior_ts = event.ts_ns
-        return visible[:limit]
 
     def _project_trade(self, context: _Context, trade: Trade) -> dict[str, object]:
         return {
@@ -406,7 +440,7 @@ class MarketService:
         return f"evt_{digest}"
 
 
-def _setup(context: _Context):  # type: ignore[no-untyped-def]
+def _setup(context: _Context) -> CommittedSetup:
     setup = context.session.setup
     if setup is None:
         raise RuntimeError("market context lost committed setup")
