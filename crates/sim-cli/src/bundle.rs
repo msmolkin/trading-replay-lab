@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use sim_core::hash::{CanonicalWriter, Hash32, ZERO_HASH, sha256};
+use sim_core::hash::{CanonicalWriter, Hash32, sha256};
 use sim_core::kernel::{InputEnvelope, KernelEvent};
 
 use crate::json::JsonValue;
@@ -141,7 +141,7 @@ pub(crate) fn result_commitment(
     writer.hash(final_event_hash);
     writer.hash(state_hashes_hash);
     writer.hash(ledger_hash);
-    writer.u64(if metrics.survived { 1 } else { 0 });
+    writer.u64(u64::from(metrics.survived));
     writer.i64(metrics.terminal_return_ppb);
     writer.i64(metrics.max_drawdown_ppb);
     writer.i64(metrics.peak_effective_leverage_ppb);
@@ -377,11 +377,11 @@ fn canonical_signed(raw: &str, name: &str) -> Result<(), VerificationFailure> {
 }
 
 fn decode_hex(raw: &str) -> Result<Vec<u8>, String> {
-    if raw.len() % 2 != 0 {
+    if !raw.len().is_multiple_of(2) {
         return Err("hex value must have even length".into());
     }
     let mut output = Vec::with_capacity(raw.len() / 2);
-    for pair in raw.as_bytes().chunks_exact(2) {
+    for pair in raw.as_bytes().as_chunks::<2>().0 {
         let high =
             hex_nibble(pair[0]).ok_or_else(|| "hex value contains invalid digit".to_owned())?;
         let low =
@@ -462,5 +462,5 @@ fn with_index(mut failure: VerificationFailure, index: usize) -> VerificationFai
 
 #[cfg(test)]
 pub(crate) fn zero_hash() -> Hash32 {
-    ZERO_HASH
+    sim_core::hash::ZERO_HASH
 }
