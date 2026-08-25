@@ -16,7 +16,7 @@ use bundle::{
     ProofBundle, manifest_commitment, result_commitment, state_hash_commitment, verify_state_hashes,
 };
 use ledger::verify_ledger;
-use sim_core::hash::{ZERO_HASH, hash_hex};
+use sim_core::hash::{Hash32, ZERO_HASH, hash_hex};
 use sim_core::kernel::Kernel;
 
 /// Machine-readable verification outcome.
@@ -164,6 +164,10 @@ pub fn verify_bytes(bytes: &[u8]) -> VerificationReport {
 }
 
 /// Inspects and validates only the balanced ledger section of a proof bundle.
+///
+/// # Errors
+/// Returns the first strict JSON, proof-format, ledger-structure, balance, or ledger-commitment
+/// failure with its stable classification and transaction index when applicable.
 pub fn inspect_ledger_bytes(bytes: &[u8]) -> Result<LedgerInspection, VerificationFailure> {
     let root = json::parse(bytes).map_err(|error| {
         VerificationFailure::new(
@@ -190,60 +194,10 @@ fn verify_bundle(bundle: &ProofBundle) -> VerificationReport {
             None,
         );
     }
-    if bundle.inputs.len() != bundle.kernel_events.len() {
-        return VerificationReport::fail(
-            VerificationFailure::new(
-                VerificationFailureCode::EventMismatch,
-                None,
-                "inputs and kernel_events must have equal length",
-            ),
-            0,
-            0,
-            None,
-        );
-    }
-
-    let mut kernel = Kernel::new();
-    let mut verified = 0_usize;
-    let mut final_hash = ZERO_HASH;
-    for (index, (input, declared)) in bundle.inputs.iter().zip(&bundle.kernel_events).enumerate() {
-        if input.session_id != bundle.session_id {
-            return verification_failure(
-                VerificationFailureCode::InputSequence,
-                Some(index),
-                "input session_id differs from proof session_id",
-                verified,
-                final_hash,
-            );
-        }
-        let actual = match kernel.apply(input) {
-            Ok(event) => event,
-            Err(error) => {
-                return verification_failure(
-                    VerificationFailureCode::InputSequence,
-                    Some(index),
-                    error.to_string(),
-                    verified,
-                    final_hash,
-                );
-            }
-        };
-        if !declared.matches(&actual) {
-            return verification_failure(
-                VerificationFailureCode::EventMismatch,
-                Some(index),
-                format!(
-                    "declared kernel event {} differs from reproduced event",
-                    declared.event_seq
-                ),
-                verified,
-                final_hash,
-            );
-        }
-        final_hash = actual.current_event_hash;
-        verified += 1;
-    }
-
+    let (verified, final_hash) = match replay_kernel(bundle) {
+        Ok(result) => result,
+        Err(report) => return report,
+    };
     if let Err(failure) = verify_state_hashes(&bundle.state_hashes, &bundle.state_hashes_hash) {
         return VerificationReport::fail(failure, verified, 0, Some(hash_hex(&final_hash)));
     }
@@ -254,7 +208,6 @@ fn verify_bundle(bundle: &ProofBundle) -> VerificationReport {
             return VerificationReport::fail(failure, verified, 0, Some(hash_hex(&final_hash)));
         }
     };
-
     let computed_result = result_commitment(
         &bundle.session_id,
         &manifest_hash,
@@ -275,7 +228,6 @@ fn verify_bundle(bundle: &ProofBundle) -> VerificationReport {
             Some(hash_hex(&final_hash)),
         );
     }
-
     VerificationReport {
         valid: true,
         failure: None,
@@ -286,12 +238,68 @@ fn verify_bundle(bundle: &ProofBundle) -> VerificationReport {
     }
 }
 
+fn replay_kernel(bundle: &ProofBundle) -> Result<(usize, Hash32), VerificationReport> {
+    if bundle.inputs.len() != bundle.kernel_events.len() {
+        return Err(VerificationReport::fail(
+            VerificationFailure::new(
+                VerificationFailureCode::EventMismatch,
+                None,
+                "inputs and kernel_events must have equal length",
+            ),
+            0,
+            0,
+            None,
+        ));
+    }
+    let mut kernel = Kernel::new();
+    let mut verified = 0_usize;
+    let mut final_hash = ZERO_HASH;
+    for (index, (input, declared)) in bundle.inputs.iter().zip(&bundle.kernel_events).enumerate() {
+        if input.session_id != bundle.session_id {
+            return Err(verification_failure(
+                VerificationFailureCode::InputSequence,
+                Some(index),
+                "input session_id differs from proof session_id",
+                verified,
+                final_hash,
+            ));
+        }
+        let actual = match kernel.apply(input) {
+            Ok(event) => event,
+            Err(error) => {
+                return Err(verification_failure(
+                    VerificationFailureCode::InputSequence,
+                    Some(index),
+                    error.to_string(),
+                    verified,
+                    final_hash,
+                ));
+            }
+        };
+        if !declared.matches(&actual) {
+            return Err(verification_failure(
+                VerificationFailureCode::EventMismatch,
+                Some(index),
+                format!(
+                    "declared kernel event {} differs from reproduced event",
+                    declared.event_seq
+                ),
+                verified,
+                final_hash,
+            ));
+        }
+        final_hash = actual.current_event_hash;
+        verified += 1;
+    }
+    Ok((verified, final_hash))
+}
+
 fn verification_failure(
     code: VerificationFailureCode,
     index: Option<usize>,
     detail: impl Into<String>,
     inputs_verified: usize,
-    final_hash: [u8; 32],
+    final_hash: Hash32,
 ) -> VerificationReport {
     VerificationReport::fail(
         VerificationFailure::new(code, index, detail),
