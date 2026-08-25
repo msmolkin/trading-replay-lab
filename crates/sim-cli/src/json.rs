@@ -330,7 +330,7 @@ mod tests {
             JsonErrorKind::DuplicateKey
         );
         assert_eq!(
-            parse(br#"{}x"#).unwrap_err().kind,
+            parse(br"{}x").unwrap_err().kind,
             JsonErrorKind::TrailingData
         );
     }
