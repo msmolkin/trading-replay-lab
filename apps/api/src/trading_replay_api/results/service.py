@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
-from dataclasses import replace
 
 from trading_replay_api.commitments import (
     ALGORITHM_VERSION,
@@ -13,13 +12,17 @@ from trading_replay_api.commitments import (
     SelectionSetup,
     verify_completion_proof,
 )
-from trading_replay_api.sessions import SessionLifecycleError, SessionStatus
+from trading_replay_api.sessions import (
+    CommittedSetup,
+    SessionLifecycleError,
+    SessionRecord,
+    SessionStatus,
+)
 
 from .model import (
     CanonicalInput,
     CommandReplayMetadata,
     FrozenResult,
-    LedgerPostingEvidence,
     LedgerTransactionEvidence,
     ResultErrorCode,
     ResultEvidence,
@@ -34,7 +37,6 @@ from .store import AuthoritativeResultData, ResultStore
 SCHEMA_VERSION = "1.0.0"
 VERIFICATION_VERSION = "1"
 EXPORT_VERSION = "1"
-ZERO_HASH = "0" * 64
 
 
 class ResultService:
@@ -125,7 +127,7 @@ class ResultService:
         """Return the immutable result for one owned session."""
         return self.store.get(session_id=session_id, principal_id=principal_id)
 
-    def _completed_session(self, session_id: str, principal_id: str):  # type: ignore[no-untyped-def]
+    def _completed_session(self, session_id: str, principal_id: str) -> SessionRecord:
         try:
             session = self.sessions.get_session(session_id=session_id, principal_id=principal_id)
         except SessionLifecycleError as error:
@@ -173,36 +175,36 @@ def _commands(
     if row_ids != set(by_id):
         raise _invalid("command replay metadata must match persisted commands exactly")
 
-    output: list[dict[str, object]] = []
-    prior_arrival: int | None = None
+    projected: list[tuple[int, dict[str, object]]] = []
     for row in rows:
         command_id = _string_field(row, "command_id")
         item = by_id[command_id]
-        if prior_arrival is not None and item.arrival_seq <= prior_arrival:
-            raise _invalid("command arrival_seq must increase in persisted command order")
-        prior_arrival = item.arrival_seq
         payload = row.get("payload")
         if not isinstance(payload, Mapping) or any(not isinstance(key, str) for key in payload):
             raise ResultServiceError(
                 ResultErrorCode.PERSISTED_CONFLICT,
                 "stored command payload is invalid",
             )
-        output.append(
-            {
-                "schema_version": SCHEMA_VERSION,
-                "command_id": command_id,
-                "idempotency_key": _string_field(row, "idempotency_key"),
-                "session_id": session_id,
-                "principal_id": principal_id,
-                "accepted_at_ns": str(_int_field(row, "accepted_at_ns")),
-                "logical_ts_ns": str(item.logical_ts_ns),
-                "arrival_seq": str(item.arrival_seq),
-                "expected_session_version": str(_int_field(row, "expected_session_version")),
-                "payload": dict(payload),
-                "payload_hash": _sha_field(row, "payload_hash"),
-            }
+        projected.append(
+            (
+                item.arrival_seq,
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "command_id": command_id,
+                    "idempotency_key": _string_field(row, "idempotency_key"),
+                    "session_id": session_id,
+                    "principal_id": principal_id,
+                    "accepted_at_ns": str(_int_field(row, "accepted_at_ns")),
+                    "logical_ts_ns": str(item.logical_ts_ns),
+                    "arrival_seq": str(item.arrival_seq),
+                    "expected_session_version": str(_int_field(row, "expected_session_version")),
+                    "payload": dict(payload),
+                    "payload_hash": _sha_field(row, "payload_hash"),
+                },
+            )
         )
-    return output
+    projected.sort(key=lambda pair: pair[0])
+    return [payload for _, payload in projected]
 
 
 def _domain_events(
@@ -254,7 +256,7 @@ def _domain_events(
 def _commitment_exports(
     rows: Sequence[Mapping[str, object]],
     *,
-    setup: object,
+    setup: CommittedSetup,
     eligible_episodes: Sequence[EligibleEpisode],
 ) -> tuple[list[str], list[str]]:
     hashes: list[str] = []
@@ -297,46 +299,25 @@ def _commitment_exports(
         )
         if not eligible_episodes:
             raise _invalid("eligible episode list is required to verify selection commitment")
-        selection_setup = _selection_setup(setup)
         try:
-            verify_completion_proof(selection_setup, eligible_episodes, proof)
+            verify_completion_proof(_selection_setup(setup), eligible_episodes, proof)
         except (ValueError, RuntimeError) as error:
             raise _invalid("episode-selection completion proof did not verify") from error
         nonces.append(nonce)
     return hashes, nonces
 
 
-def _selection_setup(setup: object) -> SelectionSetup:
-    required = (
-        "instrument_id",
-        "ruleset_hash",
-        "execution_tier",
-        "warmup_ns",
-        "duration_ns",
-        "visibility_mode",
-        "required_capabilities",
-        "allowed_redistribution",
-        "allow_degraded",
-    )
-    if any(not hasattr(setup, name) for name in required):
-        raise ResultServiceError(
-            ResultErrorCode.PERSISTED_CONFLICT,
-            "committed setup cannot produce selection proof inputs",
-        )
+def _selection_setup(setup: CommittedSetup) -> SelectionSetup:
     return SelectionSetup(
-        instrument_id=str(getattr(setup, "instrument_id")),
-        ruleset_hash=str(getattr(setup, "ruleset_hash")),
-        execution_tier=getattr(setup, "execution_tier").value,
-        warmup_ns=int(getattr(setup, "warmup_ns")),
-        duration_ns=int(getattr(setup, "duration_ns")),
-        visibility_mode=getattr(setup, "visibility_mode").value,
-        required_capabilities=tuple(
-            sorted(item.value for item in getattr(setup, "required_capabilities"))
-        ),
-        allowed_redistribution=tuple(
-            sorted(item.value for item in getattr(setup, "allowed_redistribution"))
-        ),
-        allow_degraded=bool(getattr(setup, "allow_degraded")),
+        instrument_id=setup.instrument_id,
+        ruleset_hash=setup.ruleset_hash,
+        execution_tier=setup.execution_tier.value,
+        warmup_ns=setup.warmup_ns,
+        duration_ns=setup.duration_ns,
+        visibility_mode=setup.visibility_mode.value,
+        required_capabilities=tuple(sorted(item.value for item in setup.required_capabilities)),
+        allowed_redistribution=tuple(sorted(item.value for item in setup.allowed_redistribution)),
+        allow_degraded=setup.allow_degraded,
     )
 
 
@@ -569,7 +550,12 @@ def _text(value: str) -> bytes:
 
 
 def _i64(value: int, name: str) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value < -(2**63) or value > 2**63 - 1:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < -(2**63)
+        or value > 2**63 - 1
+    ):
         raise _invalid(f"{name} must fit signed 64-bit integer")
 
 
@@ -650,4 +636,4 @@ def _invalid(message: str) -> ResultServiceError:
     return ResultServiceError(ResultErrorCode.INVALID_EVIDENCE, message)
 
 
-__all__ = ["EXPORT_VERSION", "ResultService", "SCHEMA_VERSION", "VERIFICATION_VERSION"]
+__all__ = ["EXPORT_VERSION", "SCHEMA_VERSION", "VERIFICATION_VERSION", "ResultService"]
