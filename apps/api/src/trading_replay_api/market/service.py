@@ -77,9 +77,7 @@ class MarketService:
     ) -> MarketPage:
         """Return visible trades in canonical source order."""
         context = self._context(session_id, principal_id, start_offset_ns)
-        cache_key = self._cache_key(
-            "TRADES", context, principal_id, after_sequence, limit, None
-        )
+        cache_key = self._cache_key("TRADES", context, principal_id, after_sequence, limit, None)
         if cache_key in self._cache:
             return self._cache[cache_key]
         if context.frontier_ns is None:
@@ -186,9 +184,7 @@ class MarketService:
                 "interval_ns is not an allowed deterministic interval",
             )
         context = self._context(session_id, principal_id, start_offset_ns)
-        cache_key = self._cache_key(
-            "CANDLES", context, principal_id, None, limit, interval_ns
-        )
+        cache_key = self._cache_key("CANDLES", context, principal_id, None, limit, interval_ns)
         if cache_key in self._cache:
             return self._cache[cache_key]
         if context.frontier_ns is None:
@@ -228,9 +224,7 @@ class MarketService:
             ask_price_atoms=quote.ask_price_atoms,
         )
 
-    def _context(
-        self, session_id: str, principal_id: str, start_offset_ns: int
-    ) -> _Context:
+    def _context(self, session_id: str, principal_id: str, start_offset_ns: int) -> _Context:
         _validate_query(start_offset_ns, None, 1)
         try:
             session = self.sessions.get_session(
@@ -353,9 +347,7 @@ class MarketService:
             "ask_quantity_atoms": str(quote.ask_quantity_atoms),
         }
 
-    def _project_depth(
-        self, context: _Context, snapshot: DepthSnapshot
-    ) -> dict[str, object]:
+    def _project_depth(self, context: _Context, snapshot: DepthSnapshot) -> dict[str, object]:
         return {
             "event_id": self._event_id(context.session.session_id, snapshot.source_event_id),
             **self._time_payload(context, snapshot.ts_ns),
@@ -422,9 +414,7 @@ class MarketService:
             interval_ns,
         )
 
-    def _cache_empty(
-        self, cache_key: tuple[object, ...], context: _Context
-    ) -> MarketPage:
+    def _cache_empty(self, cache_key: tuple[object, ...], context: _Context) -> MarketPage:
         page = MarketPage(items=(), next_cursor=None, frontier=self._frontier_payload(context))
         self._cache[cache_key] = page
         return page
@@ -453,9 +443,7 @@ def _validate_query(start_offset_ns: int, after_sequence: int | None, limit: int
             MarketErrorCode.INVALID_QUERY,
             "start_offset_ns must be a nonnegative integer",
         )
-    if after_sequence is not None and (
-        isinstance(after_sequence, bool) or after_sequence < 0
-    ):
+    if after_sequence is not None and (isinstance(after_sequence, bool) or after_sequence < 0):
         raise MarketServiceError(
             MarketErrorCode.INVALID_QUERY,
             "after_sequence must be a nonnegative integer",
