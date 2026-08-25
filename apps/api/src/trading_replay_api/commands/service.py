@@ -201,7 +201,9 @@ class TradingCommandService:
         reject_unknown(request, _ORDER_FIELDS)
         instrument_id = require_string(request, "instrument_id")
         side = _enum_string(request, "side", frozenset({"BUY", "SELL"}))
-        quantity = canonical_u64_text(request.get("quantity_atoms"), "quantity_atoms", positive=True)
+        quantity = canonical_u64_text(
+            request.get("quantity_atoms"), "quantity_atoms", positive=True
+        )
         order_type = _enum_string(
             request,
             "order_type",
@@ -266,7 +268,9 @@ class TradingCommandService:
         if has_price:
             side = _enum_string(request, "side", frozenset({"BUY", "SELL"}), required=False)
             if "price_reference" in request and side is None:
-                raise _invalid("replacement price_reference requires side for passive midpoint rounding")
+                raise _invalid(
+                    "replacement price_reference requires side for passive midpoint rounding"
+                )
             self._resolve_replacement_prices(
                 payload,
                 session_id=session_id,
