@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import pytest
+from fastapi.routing import APIRoute
 from sqlalchemy import create_engine, insert, select
+from sqlalchemy.engine import Engine
 
 from trading_replay_api.auth import LocalAuthenticator
 from trading_replay_api.commands import (
@@ -36,7 +38,7 @@ class FixedQuoteResolver:
         return self.quote
 
 
-def service() -> tuple[TradingCommandService, object]:
+def service() -> tuple[TradingCommandService, Engine]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     metadata.create_all(engine)
     with engine.begin() as connection:
@@ -208,7 +210,7 @@ def test_router_exposes_canonical_command_endpoints() -> None:
         service=commands_service,
         authenticator=LocalAuthenticator(principal_id="principal-1"),
     )
-    paths = {route.path for route in router.routes}
+    paths = {route.path for route in router.routes if isinstance(route, APIRoute)}
     assert paths == {
         "/sessions/{session_id}/orders",
         "/sessions/{session_id}/orders/{order_id}/cancel",
