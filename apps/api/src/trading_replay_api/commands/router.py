@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import cast
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Header, HTTPException, Request
 
@@ -25,7 +25,7 @@ def build_command_router(
     def submit_order(
         session_id: str,
         request: Request,
-        body: dict[str, object] = Body(...),
+        body: Annotated[dict[str, object], Body()],
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         expected_version: str = Header(..., alias="Expected-Session-Version"),
     ) -> dict[str, object]:
@@ -46,7 +46,7 @@ def build_command_router(
         session_id: str,
         order_id: str,
         request: Request,
-        body: dict[str, object] = Body(default_factory=dict),
+        body: Annotated[dict[str, object], Body(default_factory=dict)],
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         expected_version: str = Header(..., alias="Expected-Session-Version"),
     ) -> dict[str, object]:
@@ -68,7 +68,7 @@ def build_command_router(
         session_id: str,
         order_id: str,
         request: Request,
-        body: dict[str, object] = Body(...),
+        body: Annotated[dict[str, object], Body()],
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         expected_version: str = Header(..., alias="Expected-Session-Version"),
     ) -> dict[str, object]:
@@ -89,7 +89,7 @@ def build_command_router(
     def set_leverage(
         session_id: str,
         request: Request,
-        body: dict[str, object] = Body(...),
+        body: Annotated[dict[str, object], Body()],
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         expected_version: str = Header(..., alias="Expected-Session-Version"),
     ) -> dict[str, object]:
