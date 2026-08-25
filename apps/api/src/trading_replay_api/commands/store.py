@@ -92,7 +92,10 @@ class CommandStore:
                 if stored_version != expected_session_version:
                     raise CommandServiceError(
                         CommandErrorCode.VERSION_CONFLICT,
-                        f"expected session version {expected_session_version}, stored {stored_version}",
+                        (
+                            f"expected session version {expected_session_version}, "
+                            f"stored {stored_version}"
+                        ),
                     )
                 next_version = expected_session_version + 1
                 if next_version > U64_MAX:
