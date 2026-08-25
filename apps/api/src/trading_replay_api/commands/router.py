@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Header, HTTPException, Request
@@ -142,9 +142,9 @@ def _version(raw: str) -> int:
 
 def _invoke(function: object, /, **kwargs: object) -> AcceptedCommand:
     try:
-        callable_function = cast(object, function)
-        if not callable(callable_function):
+        if not callable(function):
             raise RuntimeError("command service method is not callable")
+        callable_function = cast(Callable[..., object], function)
         result = callable_function(**kwargs)
         if not isinstance(result, AcceptedCommand):
             raise RuntimeError("command service returned unexpected result")
