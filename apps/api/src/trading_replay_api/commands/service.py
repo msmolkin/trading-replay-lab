@@ -214,6 +214,9 @@ class TradingCommandService:
             "time_in_force",
             frozenset({"GTC", "IOC", "FOK"}),
         )
+        assert side is not None
+        assert order_type is not None
+        assert time_in_force is not None
         reduce_only = optional_bool(request, "reduce_only")
         post_only = optional_bool(request, "post_only")
         marketable_only = optional_bool(request, "marketable_only")
