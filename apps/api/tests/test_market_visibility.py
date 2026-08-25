@@ -100,7 +100,7 @@ class FakeSource:
         assert manifest_hash == MANIFEST
         assert instrument_id == "SYNTH"
         self.trade_calls += 1
-        values = (
+        values: tuple[Trade, ...] = (
             Trade("trade-a", 1, PLAY_START, 100, 2),
             Trade("trade-b", 2, PLAY_START + SECOND, 110, 3),
             Trade("trade-future", 3, PLAY_START + 3 * SECOND, 999, 100),
@@ -124,7 +124,7 @@ class FakeSource:
         del start_ns, through_ns
         assert manifest_hash == MANIFEST
         assert instrument_id == "SYNTH"
-        values = (
+        values: tuple[Bbo, ...] = (
             Bbo("quote-a", 4, PLAY_START + SECOND, 100, 5, 102, 7),
             Bbo("quote-future", 5, PLAY_START + 4 * SECOND, 200, 1, 202, 1),
         )
@@ -145,7 +145,7 @@ class FakeSource:
         del start_ns, through_ns
         assert manifest_hash == MANIFEST
         assert instrument_id == "SYNTH"
-        values = (
+        values: tuple[DepthSnapshot, ...] = (
             DepthSnapshot(
                 "depth-a",
                 6,
