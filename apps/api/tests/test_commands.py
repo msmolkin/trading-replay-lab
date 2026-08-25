@@ -59,7 +59,9 @@ def service() -> tuple[TradingCommandService, object]:
     )
 
 
-def order(*, quantity_atoms: object = "2", extra: dict[str, object] | None = None) -> dict[str, object]:
+def order(
+    *, quantity_atoms: object = "2", extra: dict[str, object] | None = None
+) -> dict[str, object]:
     body: dict[str, object] = {
         "instrument_id": "SYNTH",
         "side": "BUY",
@@ -106,11 +108,14 @@ def test_midpoint_shortcut_uses_visible_quote_and_exact_retry_is_stable() -> Non
     assert retry.replayed
 
     with engine.connect() as connection:
-        assert int(
-            connection.execute(
-                select(sessions.c.version).where(sessions.c.session_id == "session-1")
-            ).scalar_one()
-        ) == 8
+        assert (
+            int(
+                connection.execute(
+                    select(sessions.c.version).where(sessions.c.session_id == "session-1")
+                ).scalar_one()
+            )
+            == 8
+        )
         assert len(connection.execute(select(commands)).all()) == 1
 
 
