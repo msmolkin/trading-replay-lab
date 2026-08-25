@@ -99,3 +99,17 @@ commitments = Table(
     Column("revealed_secret", Text, nullable=True),
     UniqueConstraint("session_id", "kind", name="uq_commitments_session_kind"),
 )
+
+result_bundles = Table(
+    "result_bundles",
+    metadata,
+    Column("session_id", ForeignKey("sessions.session_id"), primary_key=True),
+    Column("result_hash", String(64), nullable=False),
+    Column("bundle_hash", String(64), nullable=False),
+    Column("proof_hash", String(64), nullable=False),
+    Column("export_hash", String(64), nullable=False),
+    Column("created_at_ns", BigInteger, nullable=False),
+    Column("bundle_json", JSON, nullable=False),
+    Column("proof_json", JSON, nullable=False),
+    Column("export_json", JSON, nullable=False),
+)
