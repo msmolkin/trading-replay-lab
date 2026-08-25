@@ -284,7 +284,7 @@ class MarketService:
             return {}
         buckets: dict[int, list[Trade]] = {}
         after_sequence: int | None = None
-        while len(buckets) < limit:
+        while len(buckets) <= limit:
             raw = self.source.trades(
                 manifest_hash=setup.manifest_hash,
                 instrument_id=setup.instrument_id,
@@ -455,10 +455,13 @@ def _validate_query(start_offset_ns: int, after_sequence: int | None, limit: int
         )
 
 
-def _next_cursor(events: Sequence[T], limit: int) -> str | None:
+def _next_cursor(
+    events: Sequence[Trade | Bbo | DepthSnapshot],
+    limit: int,
+) -> str | None:
     if len(events) < limit or not events:
         return None
     return str(events[-1].source_sequence)
 
 
-__all__ = ["MAX_PAGE_SIZE", "MarketPage", "MarketService", "SUPPORTED_INTERVALS_NS"]
+__all__ = ["MAX_PAGE_SIZE", "SUPPORTED_INTERVALS_NS", "MarketPage", "MarketService"]
