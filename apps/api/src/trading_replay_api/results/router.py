@@ -102,7 +102,13 @@ def _json_download(
 
 
 def _filename_token(session_id: str) -> str:
-    return "".join(character if character.isalnum() or character in "-_" else "_" for character in session_id)[:80] or "session"
+    return (
+        "".join(
+            character if character.isalnum() or character in "-_" else "_"
+            for character in session_id
+        )[:80]
+        or "session"
+    )
 
 
 __all__ = ["build_result_router"]
