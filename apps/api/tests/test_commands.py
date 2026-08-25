@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 from sqlalchemy import create_engine, insert, select
@@ -28,7 +28,7 @@ class FixedClock:
 
 @dataclass(frozen=True, slots=True)
 class FixedQuoteResolver:
-    quote: VisibleQuote | None = VisibleQuote("quote-9", 100, 103)
+    quote: VisibleQuote | None = field(default_factory=lambda: VisibleQuote("quote-9", 100, 103))
 
     def current_quote(self, *, session_id: str, principal_id: str) -> VisibleQuote | None:
         assert session_id == "session-1"
