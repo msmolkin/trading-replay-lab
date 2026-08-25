@@ -267,5 +267,7 @@ def test_canonical_json_rejects_float_and_router_is_read_only() -> None:
         "/sessions/{session_id}/result/export",
     }
     assert all(
-        "POST" not in route.methods for route in router.routes if isinstance(route, APIRoute)
+        "POST" not in (route.methods or set())
+        for route in router.routes
+        if isinstance(route, APIRoute)
     )
