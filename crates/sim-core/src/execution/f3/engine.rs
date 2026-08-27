@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
 use crate::numeric::{PriceAtoms, QtyAtoms};
-use crate::orders::{OrderError, OrderId, OrderKind, OrderState, OrderStatus, Side, TimeInForce};
+use crate::orders::{OrderError, OrderId, OrderKind, OrderState, Side, TimeInForce};
+#[cfg(test)]
+use crate::orders::OrderStatus;
 
 use super::book::MboBook;
 use super::types::{
