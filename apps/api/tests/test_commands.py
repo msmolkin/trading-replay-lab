@@ -121,6 +121,65 @@ def test_midpoint_shortcut_uses_visible_quote_and_exact_retry_is_stable() -> Non
         assert len(connection.execute(select(commands)).all()) == 1
 
 
+def test_exact_replacement_persists_flat_canonical_payload() -> None:
+    commands_service, _ = service()
+    accepted = commands_service.replace_order(
+        session_id="session-1",
+        principal_id="principal-1",
+        idempotency_key="replace-1",
+        expected_session_version=7,
+        order_id="order-9",
+        request={
+            "quantity_atoms": "5",
+            "limit_price_atoms": "102",
+            "time_in_force": "GTC",
+            "reduce_only": False,
+            "post_only": True,
+            "marketable_only": False,
+        },
+    )
+
+    assert accepted.payload == {
+        "command_type": "REPLACE_ORDER",
+        "order_id": "order-9",
+        "quantity_atoms": "5",
+        "limit_price_atoms": "102",
+        "time_in_force": "GTC",
+        "reduce_only": False,
+        "post_only": True,
+        "marketable_only": False,
+    }
+    assert accepted.resulting_session_version == 8
+
+
+def test_replacement_quote_shortcut_fails_closed_without_state_change() -> None:
+    commands_service, engine = service()
+
+    with pytest.raises(
+        CommandServiceError, match="unsupported command fields: price_reference"
+    ) as caught:
+        commands_service.replace_order(
+            session_id="session-1",
+            principal_id="principal-1",
+            idempotency_key="replace-shortcut",
+            expected_session_version=7,
+            order_id="order-9",
+            request={"price_reference": "MIDPOINT"},
+        )
+    assert caught.value.code is CommandErrorCode.INVALID_COMMAND
+
+    with engine.connect() as connection:
+        assert (
+            int(
+                connection.execute(
+                    select(sessions.c.version).where(sessions.c.session_id == "session-1")
+                ).scalar_one()
+            )
+            == 7
+        )
+        assert connection.execute(select(commands)).all() == []
+
+
 def test_same_idempotency_key_with_changed_payload_conflicts() -> None:
     commands_service, _ = service()
     commands_service.submit_order(
