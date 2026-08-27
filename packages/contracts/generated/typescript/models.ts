@@ -4,6 +4,9 @@ export type Int64 = bigint;
 export type UInt64 = bigint;
 export type Side = "BUY" | "SELL";
 export type JsonObject = Readonly<Record<string, unknown>>;
+export type OrderType = "MARKET" | "LIMIT" | "STOP_MARKET" | "STOP_LIMIT";
+export type TimeInForce = "GTC" | "IOC" | "FOK";
+export type PriceReference = "BID" | "ASK" | "MIDPOINT";
 
 export interface InstrumentDefinition {
   schema_version: "1.0.0";
@@ -29,6 +32,7 @@ export interface InstrumentDefinition {
   effective_through_ns?: Int64;
 }
 
+/** Legacy full order wire contract from order.schema.json. */
 export interface OrderCommand {
   command_type: "ORDER";
   command_id: string;
@@ -36,10 +40,10 @@ export interface OrderCommand {
   instrument_id: string;
   side: Side;
   quantity_atoms: UInt64;
-  order_type: "MARKET" | "LIMIT" | "STOP_MARKET" | "STOP_LIMIT";
+  order_type: OrderType;
   limit_price_atoms?: Int64;
   stop_price_atoms?: Int64;
-  time_in_force: "GTC" | "IOC" | "FOK";
+  time_in_force: TimeInForce;
   reduce_only: boolean;
   post_only: boolean;
   marketable_only: boolean;
@@ -116,21 +120,46 @@ export interface DatasetManifest {
   capabilities: DataCapabilities;
 }
 
+export interface SubmitOrderCommand {
+  command_type: "SUBMIT_ORDER";
+  instrument_id: string;
+  side: Side;
+  quantity_atoms: UInt64;
+  order_type: OrderType;
+  limit_price_atoms?: Int64;
+  stop_price_atoms?: Int64;
+  price_reference?: PriceReference;
+  quote_event_id?: string;
+  time_in_force: TimeInForce;
+  reduce_only: boolean;
+  post_only: boolean;
+  marketable_only: boolean;
+}
+
 export interface SetLeverageCommand {
   command_type: "SET_LEVERAGE";
-  requested_leverage: number;
+  leverage: number;
 }
+
 export interface CancelOrderCommand {
   command_type: "CANCEL_ORDER";
   order_id: string;
 }
+
 export interface ReplaceOrderCommand {
   command_type: "REPLACE_ORDER";
   order_id: string;
-  replacement: OrderCommand;
+  quantity_atoms?: UInt64;
+  limit_price_atoms?: Int64;
+  stop_price_atoms?: Int64;
+  time_in_force?: TimeInForce;
+  reduce_only?: boolean;
+  post_only?: boolean;
+  marketable_only?: boolean;
 }
+
 export type CommandPayload =
-  | OrderCommand
+  | SubmitOrderCommand
   | SetLeverageCommand
   | CancelOrderCommand
   | ReplaceOrderCommand;
@@ -180,6 +209,7 @@ export interface ResultMetrics {
   peak_effective_leverage_ppb: Int64;
   benchmark_return_ppb: Int64;
 }
+
 export interface ResultBundle {
   schema_version: "1.0.0";
   session_id: string;
@@ -200,11 +230,13 @@ export function parseInt64(value: string): bigint {
   if (parsed < -(1n << 63n) || parsed > (1n << 63n) - 1n) throw new RangeError("int64");
   return parsed;
 }
+
 export function parseUInt64(value: string): bigint {
   const parsed = BigInt(value);
   if (parsed < 0n || parsed > (1n << 64n) - 1n) throw new RangeError("uint64");
   return parsed;
 }
+
 export function toWireInteger(value: bigint): string {
   return value.toString(10);
 }
