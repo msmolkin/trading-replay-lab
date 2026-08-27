@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
-  "command_id": "cmd-1",
-  "idempotency_key": "order-1",
+  "command_id": "cmd-stale",
+  "idempotency_key": "stale-1",
   "session_id": "session-1",
   "principal_id": "local-user",
   "accepted_at_ns": "1704067200123456790",
@@ -9,7 +9,9 @@
   "arrival_seq": "7",
   "expected_session_version": "12",
   "payload": {
-    "command_type": "SUBMIT_ORDER",
+    "command_type": "ORDER",
+    "command_id": "cmd-stale",
+    "session_id": "session-1",
     "instrument_id": "binance:BTCUSDT:spot",
     "side": "BUY",
     "quantity_atoms": "250000",
@@ -17,7 +19,9 @@
     "time_in_force": "IOC",
     "reduce_only": false,
     "post_only": false,
-    "marketable_only": true
+    "marketable_only": true,
+    "submitted_at_event_seq": "42",
+    "client_idempotency_key": "stale-1"
   },
   "payload_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 }

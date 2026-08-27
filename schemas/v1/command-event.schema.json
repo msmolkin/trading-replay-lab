@@ -3,36 +3,188 @@
   "$id": "https://trading-replay-lab.dev/schemas/v1/command-event.schema.json",
   "title": "CommandAndDomainEvents",
   "$defs": {
+    "PositiveWireInt64": {
+      "allOf": [
+        {"$ref": "common.schema.json#/$defs/WireInt64"},
+        {"type": "string", "pattern": "^[1-9][0-9]*$"}
+      ]
+    },
+    "OrderType": {
+      "type": "string",
+      "enum": ["MARKET", "LIMIT", "STOP_MARKET", "STOP_LIMIT"]
+    },
+    "TimeInForce": {
+      "type": "string",
+      "enum": ["GTC", "IOC", "FOK"]
+    },
+    "PriceReference": {
+      "type": "string",
+      "enum": ["BID", "ASK", "MIDPOINT"]
+    },
+    "SubmitOrderCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command_type", "instrument_id", "side", "quantity_atoms", "order_type",
+        "time_in_force", "reduce_only", "post_only", "marketable_only"
+      ],
+      "properties": {
+        "command_type": {"const": "SUBMIT_ORDER"},
+        "instrument_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "side": {"$ref": "common.schema.json#/$defs/Side"},
+        "quantity_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+        "order_type": {"$ref": "#/$defs/OrderType"},
+        "limit_price_atoms": {"$ref": "#/$defs/PositiveWireInt64"},
+        "stop_price_atoms": {"$ref": "#/$defs/PositiveWireInt64"},
+        "price_reference": {"$ref": "#/$defs/PriceReference"},
+        "quote_event_id": {"$ref": "common.schema.json#/$defs/Identifier"},
+        "time_in_force": {"$ref": "#/$defs/TimeInForce"},
+        "reduce_only": {"type": "boolean"},
+        "post_only": {"type": "boolean"},
+        "marketable_only": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "not": {
+            "properties": {
+              "post_only": {"const": true},
+              "marketable_only": {"const": true}
+            },
+            "required": ["post_only", "marketable_only"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"order_type": {"const": "MARKET"}},
+            "required": ["order_type"]
+          },
+          "then": {
+            "properties": {"post_only": {"const": false}},
+            "not": {
+              "anyOf": [
+                {"required": ["limit_price_atoms"]},
+                {"required": ["stop_price_atoms"]},
+                {"required": ["price_reference"]},
+                {"required": ["quote_event_id"]}
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"order_type": {"const": "LIMIT"}},
+            "required": ["order_type"]
+          },
+          "then": {
+            "required": ["limit_price_atoms"],
+            "not": {"required": ["stop_price_atoms"]}
+          }
+        },
+        {
+          "if": {
+            "properties": {"order_type": {"const": "STOP_MARKET"}},
+            "required": ["order_type"]
+          },
+          "then": {
+            "required": ["stop_price_atoms"],
+            "properties": {"post_only": {"const": false}},
+            "not": {
+              "anyOf": [
+                {"required": ["limit_price_atoms"]},
+                {"required": ["price_reference"]},
+                {"required": ["quote_event_id"]}
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"order_type": {"const": "STOP_LIMIT"}},
+            "required": ["order_type"]
+          },
+          "then": {"required": ["stop_price_atoms", "limit_price_atoms"]}
+        },
+        {
+          "if": {"required": ["price_reference"]},
+          "then": {"required": ["limit_price_atoms", "quote_event_id"]}
+        },
+        {
+          "if": {"required": ["quote_event_id"]},
+          "then": {"required": ["price_reference"]}
+        }
+      ]
+    },
     "SetLeverageCommand": {
-      "type": "object", "additionalProperties": false,
-      "required": ["command_type", "requested_leverage"],
-      "properties": {"command_type": {"const": "SET_LEVERAGE"}, "requested_leverage": {"type": "integer", "minimum": 1, "maximum": 50}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command_type", "leverage"],
+      "properties": {
+        "command_type": {"const": "SET_LEVERAGE"},
+        "leverage": {"type": "integer", "minimum": 1, "maximum": 50}
+      }
     },
     "CancelOrderCommand": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["command_type", "order_id"],
-      "properties": {"command_type": {"const": "CANCEL_ORDER"}, "order_id": {"$ref": "common.schema.json#/$defs/Identifier"}}
+      "properties": {
+        "command_type": {"const": "CANCEL_ORDER"},
+        "order_id": {"$ref": "common.schema.json#/$defs/Identifier"}
+      }
     },
     "ReplaceOrderCommand": {
-      "type": "object", "additionalProperties": false,
-      "required": ["command_type", "order_id", "replacement"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command_type", "order_id"],
       "properties": {
         "command_type": {"const": "REPLACE_ORDER"},
         "order_id": {"$ref": "common.schema.json#/$defs/Identifier"},
-        "replacement": {"$ref": "order.schema.json"}
-      }
+        "quantity_atoms": {"$ref": "common.schema.json#/$defs/PositiveWireUInt64"},
+        "limit_price_atoms": {"$ref": "#/$defs/PositiveWireInt64"},
+        "stop_price_atoms": {"$ref": "#/$defs/PositiveWireInt64"},
+        "time_in_force": {"$ref": "#/$defs/TimeInForce"},
+        "reduce_only": {"type": "boolean"},
+        "post_only": {"type": "boolean"},
+        "marketable_only": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {"required": ["quantity_atoms"]},
+            {"required": ["limit_price_atoms"]},
+            {"required": ["stop_price_atoms"]},
+            {"required": ["time_in_force"]},
+            {"required": ["reduce_only"]},
+            {"required": ["post_only"]},
+            {"required": ["marketable_only"]}
+          ]
+        },
+        {
+          "not": {
+            "properties": {
+              "post_only": {"const": true},
+              "marketable_only": {"const": true}
+            },
+            "required": ["post_only", "marketable_only"]
+          }
+        }
+      ]
     },
     "CommandPayload": {
       "oneOf": [
-        {"$ref": "order.schema.json"}, {"$ref": "#/$defs/SetLeverageCommand"},
-        {"$ref": "#/$defs/CancelOrderCommand"}, {"$ref": "#/$defs/ReplaceOrderCommand"}
+        {"$ref": "#/$defs/SubmitOrderCommand"},
+        {"$ref": "#/$defs/SetLeverageCommand"},
+        {"$ref": "#/$defs/CancelOrderCommand"},
+        {"$ref": "#/$defs/ReplaceOrderCommand"}
       ]
     },
     "CommandEnvelope": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": [
-        "schema_version", "command_id", "idempotency_key", "session_id", "principal_id", "accepted_at_ns",
-        "logical_ts_ns", "arrival_seq", "expected_session_version", "payload", "payload_hash"
+        "schema_version", "command_id", "idempotency_key", "session_id", "principal_id",
+        "accepted_at_ns", "logical_ts_ns", "arrival_seq", "expected_session_version", "payload",
+        "payload_hash"
       ],
       "properties": {
         "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
@@ -49,40 +201,71 @@
       }
     },
     "FillPayload": {
-      "type": "object", "additionalProperties": false,
-      "required": ["order_id", "execution_id", "signed_qty_atoms", "price_atoms", "liquidity_role", "model_version", "market_event_refs", "fee_minor", "uncertainty_flags"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order_id", "execution_id", "signed_qty_atoms", "price_atoms", "liquidity_role",
+        "model_version", "market_event_refs", "fee_minor", "uncertainty_flags"
+      ],
       "properties": {
         "order_id": {"$ref": "common.schema.json#/$defs/Identifier"},
         "execution_id": {"$ref": "common.schema.json#/$defs/Identifier"},
         "signed_qty_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
         "price_atoms": {"$ref": "common.schema.json#/$defs/WireInt64"},
-        "liquidity_role": {"type": "string", "enum": ["MAKER", "TAKER", "SIMULATED_MAKER", "UNKNOWN"]},
+        "liquidity_role": {
+          "type": "string",
+          "enum": ["MAKER", "TAKER", "SIMULATED_MAKER", "UNKNOWN"]
+        },
         "model_version": {"type": "string", "minLength": 1},
-        "market_event_refs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/Identifier"}},
+        "market_event_refs": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/Identifier"}
+        },
         "fee_minor": {"$ref": "common.schema.json#/$defs/WireInt64"},
-        "uncertainty_flags": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/QualityFlag"}, "uniqueItems": true}
+        "uncertainty_flags": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/QualityFlag"},
+          "uniqueItems": true
+        }
       }
     },
     "LedgerPosting": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["account", "amount_minor", "currency"],
       "properties": {
-        "account": {"type": "string", "enum": ["CASH", "POSITION_COST_BASIS", "REALIZED_PNL", "UNREALIZED_PNL", "FEES", "FUNDING", "BORROW", "DIVIDENDS", "MARGIN_COLLATERAL", "LIQUIDATION_PENALTY", "DEFICIT"]},
+        "account": {
+          "type": "string",
+          "enum": [
+            "CASH", "POSITION_COST_BASIS", "REALIZED_PNL", "UNREALIZED_PNL", "FEES",
+            "FUNDING", "BORROW", "DIVIDENDS", "MARGIN_COLLATERAL", "LIQUIDATION_PENALTY",
+            "DEFICIT"
+          ]
+        },
         "amount_minor": {"$ref": "common.schema.json#/$defs/WireInt64"},
         "currency": {"$ref": "common.schema.json#/$defs/Identifier"}
       }
     },
     "LedgerTransactionPayload": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["transaction_id", "postings"],
       "properties": {
         "transaction_id": {"$ref": "common.schema.json#/$defs/Identifier"},
-        "postings": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/LedgerPosting"}}
+        "postings": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/LedgerPosting"}
+        }
       }
     },
     "DomainEvent": {
-      "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "session_id", "event_seq", "logical_ts_ns", "event_type", "causation_id", "correlation_id", "payload", "prior_event_hash", "current_event_hash"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "session_id", "event_seq", "logical_ts_ns", "event_type",
+        "causation_id", "correlation_id", "payload", "prior_event_hash", "current_event_hash"
+      ],
       "properties": {
         "schema_version": {"$ref": "common.schema.json#/$defs/SchemaVersion"},
         "session_id": {"$ref": "common.schema.json#/$defs/Identifier"},
@@ -97,5 +280,8 @@
       }
     }
   },
-  "oneOf": [{"$ref": "#/$defs/CommandEnvelope"}, {"$ref": "#/$defs/DomainEvent"}]
+  "oneOf": [
+    {"$ref": "#/$defs/CommandEnvelope"},
+    {"$ref": "#/$defs/DomainEvent"}
+  ]
 }

@@ -1,0 +1,4 @@
+{
+  "command_type": "SET_LEVERAGE",
+  "requested_leverage": 5
+}

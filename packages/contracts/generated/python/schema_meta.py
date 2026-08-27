@@ -1,4 +1,4 @@
 """Generated schema identity. Do not edit."""
 
 SCHEMA_VERSION = "1.0.0"
-SCHEMA_INDEX_SHA256 = "9009dc1bdd030d3f327a2cc55c065eac042b7eb00f50744c0673330bd1545eae"
+SCHEMA_INDEX_SHA256 = "0c55ac3ef0e463d6fffa286d7c3cabe58b06fd87e1d34581ab3d98885a1d7e6c"

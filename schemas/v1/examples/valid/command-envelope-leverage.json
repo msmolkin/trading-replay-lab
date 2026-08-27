@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "command_id": "cmd-leverage-1",
+  "idempotency_key": "leverage-1",
+  "session_id": "session-1",
+  "principal_id": "local-user",
+  "accepted_at_ns": "1704067200123456793",
+  "logical_ts_ns": "1704067200123456792",
+  "arrival_seq": "10",
+  "expected_session_version": "15",
+  "payload": {
+    "command_type": "SET_LEVERAGE",
+    "leverage": 5
+  },
+  "payload_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}
