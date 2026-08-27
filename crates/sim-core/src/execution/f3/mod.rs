@@ -2,6 +2,8 @@
 
 mod book;
 mod engine;
+#[cfg(test)]
+mod source_tests;
 mod types;
 
 pub use book::MboBook;
