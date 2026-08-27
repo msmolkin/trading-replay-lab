@@ -340,7 +340,11 @@ impl L2Book {
             self.enabled = false;
             return Err(F2Error::SequenceGap);
         };
-        if delta.previous_sequence != sequence || delta.sequence <= delta.previous_sequence {
+        let Some(expected_sequence) = delta.previous_sequence.checked_add(1) else {
+            self.enabled = false;
+            return Err(F2Error::SequenceGap);
+        };
+        if delta.previous_sequence != sequence || delta.sequence != expected_sequence {
             self.enabled = false;
             return Err(F2Error::SequenceGap);
         }
@@ -786,6 +790,20 @@ mod tests {
         book.apply_snapshot(snapshot(20)).unwrap();
         assert!(book.is_enabled());
         assert_eq!(book.sequence(), Some(20));
+
+        let before_skip = book.clone();
+        assert_eq!(
+            book.apply_delta(L2Delta {
+                previous_sequence: 20,
+                sequence: 22,
+                side: BookSide::Ask,
+                price: PriceAtoms::new(101),
+                quantity: QtyAtoms::new(2),
+            }),
+            Err(F2Error::SequenceGap)
+        );
+        assert!(!book.is_enabled());
+        assert_eq!(book.asks, before_skip.asks);
     }
 
     #[test]
