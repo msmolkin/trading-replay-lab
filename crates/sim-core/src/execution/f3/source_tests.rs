@@ -81,10 +81,7 @@ fn add_modify_fill_cancel_and_clear_reconstruct_deterministically() {
         modified.uncertainty,
         vec![F3Uncertainty::SamePriceModifyPriorityAssumed]
     );
-    assert_eq!(
-        book.order_ids_at(Side::Buy, PriceAtoms::new(100))[0],
-        "b1"
-    );
+    assert_eq!(book.order_ids_at(Side::Buy, PriceAtoms::new(100))[0], "b1");
 
     book.apply_event(MboEvent {
         sequence: 13,
@@ -95,10 +92,7 @@ fn add_modify_fill_cancel_and_clear_reconstruct_deterministically() {
         },
     })
     .unwrap();
-    assert_eq!(
-        book.visible_order("b1").unwrap().quantity,
-        QtyAtoms::new(4)
-    );
+    assert_eq!(book.visible_order("b1").unwrap().quantity, QtyAtoms::new(4));
 
     book.apply_event(MboEvent {
         sequence: 14,
