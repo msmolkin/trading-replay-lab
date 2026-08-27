@@ -45,7 +45,6 @@ _REPLACE_FIELDS = frozenset(
         "quantity_atoms",
         "limit_price_atoms",
         "stop_price_atoms",
-        "price_reference",
         "time_in_force",
         "reduce_only",
         "post_only",
@@ -130,7 +129,7 @@ class TradingCommandService:
         order_id: str,
         request: Mapping[str, object],
     ) -> AcceptedCommand:
-        """Accept a canonical replacement for an existing order identity."""
+        """Accept an exact canonical replacement for an existing order identity."""
         _safe_identifier(order_id, "order_id")
         reject_unknown(request, _REPLACE_FIELDS)
         if not request:
@@ -139,12 +138,7 @@ class TradingCommandService:
             "command_type": CommandType.REPLACE_ORDER.value,
             "order_id": order_id,
         }
-        self._copy_order_mutations(
-            payload,
-            session_id=session_id,
-            principal_id=principal_id,
-            request=request,
-        )
+        self._copy_order_mutations(payload, request=request)
         return self._accept_payload(
             session_id=session_id,
             principal_id=principal_id,
@@ -248,8 +242,6 @@ class TradingCommandService:
         self,
         payload: dict[str, object],
         *,
-        session_id: str,
-        principal_id: str,
         request: Mapping[str, object],
     ) -> None:
         if "quantity_atoms" in request:
@@ -258,28 +250,26 @@ class TradingCommandService:
                 "quantity_atoms",
                 positive=True,
             )
-        for name in ("time_in_force",):
-            if name in request:
-                payload[name] = _enum_string(request, name, frozenset({"GTC", "IOC", "FOK"}))
+        if "time_in_force" in request:
+            payload["time_in_force"] = _enum_string(
+                request,
+                "time_in_force",
+                frozenset({"GTC", "IOC", "FOK"}),
+            )
         for name in ("reduce_only", "post_only", "marketable_only"):
             if name in request:
                 payload[name] = optional_bool(request, name)
-
-        has_price = any(
-            name in request for name in ("limit_price_atoms", "stop_price_atoms", "price_reference")
-        )
-        if has_price:
-            side = _enum_string(request, "side", frozenset({"BUY", "SELL"}), required=False)
-            if "price_reference" in request and side is None:
-                raise _invalid(
-                    "replacement price_reference requires side for passive midpoint rounding"
-                )
-            self._resolve_replacement_prices(
-                payload,
-                session_id=session_id,
-                principal_id=principal_id,
-                side=side,
-                request=request,
+        if "limit_price_atoms" in request:
+            payload["limit_price_atoms"] = canonical_i64_text(
+                request.get("limit_price_atoms"),
+                "limit_price_atoms",
+                positive=True,
+            )
+        if "stop_price_atoms" in request:
+            payload["stop_price_atoms"] = canonical_i64_text(
+                request.get("stop_price_atoms"),
+                "stop_price_atoms",
+                positive=True,
             )
 
     def _resolve_prices(
@@ -326,43 +316,6 @@ class TradingCommandService:
             )
         elif stop_raw is not None:
             raise _invalid("stop_price_atoms is incompatible with this order_type")
-
-    def _resolve_replacement_prices(
-        self,
-        payload: dict[str, object],
-        *,
-        session_id: str,
-        principal_id: str,
-        side: str | None,
-        request: Mapping[str, object],
-    ) -> None:
-        reference = request.get("price_reference")
-        limit_raw = request.get("limit_price_atoms")
-        if reference is not None and limit_raw is not None:
-            raise _invalid("provide either price_reference or limit_price_atoms, not both")
-        if reference is not None:
-            assert side is not None
-            resolved, event_id, reference_name = self._resolve_reference(
-                session_id,
-                principal_id,
-                side,
-                reference,
-            )
-            payload["limit_price_atoms"] = str(resolved)
-            payload["price_reference"] = reference_name
-            payload["quote_event_id"] = event_id
-        elif limit_raw is not None:
-            payload["limit_price_atoms"] = canonical_i64_text(
-                limit_raw,
-                "limit_price_atoms",
-                positive=True,
-            )
-        if "stop_price_atoms" in request:
-            payload["stop_price_atoms"] = canonical_i64_text(
-                request.get("stop_price_atoms"),
-                "stop_price_atoms",
-                positive=True,
-            )
 
     def _resolve_reference(
         self,
