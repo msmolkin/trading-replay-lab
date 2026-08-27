@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "command_id": "cmd-cancel-1",
+  "idempotency_key": "cancel-1",
+  "session_id": "session-1",
+  "principal_id": "local-user",
+  "accepted_at_ns": "1704067200123456791",
+  "logical_ts_ns": "1704067200123456790",
+  "arrival_seq": "8",
+  "expected_session_version": "13",
+  "payload": {
+    "command_type": "CANCEL_ORDER",
+    "order_id": "order-7"
+  },
+  "payload_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
