@@ -258,8 +258,8 @@ fn update_player_for_action(
     let was_ahead = player.ahead_source_orders.contains(&before.source_order_id);
     let after = book.orders.get(&before.source_order_id);
     if was_ahead {
-        let still_ahead = after
-            .is_some_and(|order| order.side == player.side && order.price == player.price);
+        let still_ahead =
+            after.is_some_and(|order| order.side == player.side && order.price == player.price);
         if !still_ahead {
             player.ahead_source_orders.remove(&before.source_order_id);
         }
@@ -294,18 +294,14 @@ fn update_player_for_action(
 fn bbo_improvement(book: &MboBook, side: Side, price: PriceAtoms) -> Result<u64, F3Error> {
     match side {
         Side::Buy => {
-            let best = book
-                .best_bid()?
-                .ok_or(F3Error::PlayerImpactCapExceeded)?;
+            let best = book.best_bid()?.ok_or(F3Error::PlayerImpactCapExceeded)?;
             if price <= best.price {
                 return Ok(0);
             }
             u64::try_from(price.get() - best.price.get()).map_err(|_| F3Error::QuantityArithmetic)
         }
         Side::Sell => {
-            let best = book
-                .best_ask()?
-                .ok_or(F3Error::PlayerImpactCapExceeded)?;
+            let best = book.best_ask()?.ok_or(F3Error::PlayerImpactCapExceeded)?;
             if price >= best.price {
                 return Ok(0);
             }
