@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -65,6 +66,32 @@ def check_refs(path: Path, document: Any, documents: dict[str, Any]) -> None:
     visit(document)
 
 
+def check_python_model_surface() -> None:
+    namespace = runpy.run_path(str(ROOT / "packages/contracts/generated/python/models.py"))
+    required = {
+        "InstrumentDefinition",
+        "OrderCommand",
+        "SubmitOrderCommand",
+        "SetLeverageCommand",
+        "CancelOrderCommand",
+        "ReplaceOrderCommand",
+        "CommandPayload",
+        "CommandEnvelope",
+        "MarketEvent",
+        "Gap",
+        "DataCapabilities",
+        "DatasetManifest",
+        "DomainEvent",
+        "SessionVisibility",
+        "StateHash",
+        "ResultMetrics",
+        "ResultBundle",
+    }
+    missing = sorted(required.difference(namespace))
+    if missing:
+        raise RuntimeError(f"generated Python model surface is incomplete: {missing}")
+
+
 def main() -> int:
     schema_paths = sorted(SCHEMA_DIR.glob("*.schema.json"))
     documents = {path.name: json.loads(path.read_text(encoding="utf-8")) for path in schema_paths}
@@ -91,9 +118,10 @@ def main() -> int:
         else:
             raise RuntimeError(f"invalid fixture unexpectedly accepted: {path.name}")
 
+    check_python_model_surface()
     subprocess.run([sys.executable, str(SCRIPTS / "generate.py"), "--check"], cwd=ROOT, check=True)
     subprocess.run([sys.executable, str(SCRIPTS / "roundtrip.py")], cwd=ROOT, check=True)
-    print("Schema compatibility: refs, numerics, versions, fixtures, and generated identity are valid")
+    print("Schema compatibility: refs, numerics, versions, fixtures, generated models, and identity are valid")
     return 0
 
 
