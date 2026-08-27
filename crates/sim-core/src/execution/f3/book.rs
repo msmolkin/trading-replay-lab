@@ -306,10 +306,9 @@ impl MboBook {
     fn validate_uncrossed(&self) -> Result<(), F3Error> {
         if let (Some((&bid, _)), Some((&ask, _))) =
             (self.bids.iter().next_back(), self.asks.iter().next())
+            && bid >= ask
         {
-            if bid >= ask {
-                return Err(F3Error::InvalidBook);
-            }
+            return Err(F3Error::InvalidBook);
         }
         Ok(())
     }
