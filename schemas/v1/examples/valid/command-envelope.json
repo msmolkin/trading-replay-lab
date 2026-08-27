@@ -9,9 +9,7 @@
   "arrival_seq": "7",
   "expected_session_version": "12",
   "payload": {
-    "command_type": "ORDER",
-    "command_id": "cmd-1",
-    "session_id": "session-1",
+    "command_type": "SUBMIT_ORDER",
     "instrument_id": "binance:BTCUSDT:spot",
     "side": "BUY",
     "quantity_atoms": "250000",
@@ -19,10 +17,7 @@
     "time_in_force": "IOC",
     "reduce_only": false,
     "post_only": false,
-    "marketable_only": true,
-    "slippage_cap_bps": 50,
-    "submitted_at_event_seq": "42",
-    "client_idempotency_key": "order-1"
+    "marketable_only": true
   },
   "payload_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 }
