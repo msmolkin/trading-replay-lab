@@ -10,11 +10,16 @@
         "FillPayload",
         "LedgerPosting",
         "LedgerTransactionPayload",
+        "OrderType",
+        "PositiveWireInt64",
+        "PriceReference",
         "ReplaceOrderCommand",
-        "SetLeverageCommand"
+        "SetLeverageCommand",
+        "SubmitOrderCommand",
+        "TimeInForce"
       ],
       "file": "command-event.schema.json",
-      "git_blob_sha1": "42f0c8eed88446734eb47898ffeb7e9fa9a512f2",
+      "git_blob_sha1": "7cb44798e80e52afdee712d224fd2cf216164faf",
       "id": "https://trading-replay-lab.dev/schemas/v1/command-event.schema.json",
       "title": "CommandAndDomainEvents"
     },
