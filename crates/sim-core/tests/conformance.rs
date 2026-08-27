@@ -4,9 +4,7 @@ use sim_core::economics::{
     EconomicsMath, EconomicsState, ExecutionFeeInput, LiquidityRole, ScheduledCashFlow,
     ScheduledEconomicId, SplitRatio, split_order, split_position,
 };
-use sim_core::execution::f0::{
-    Bar, F0Config, IntrabarPolicy, UncertaintyFlag, execute_bar,
-};
+use sim_core::execution::f0::{Bar, F0Config, IntrabarPolicy, UncertaintyFlag, execute_bar};
 use sim_core::execution::f1::{
     BboQuote, F1Config, F1Error, F1LiquidityRole, MidpointRounding, QuoteReference, TradePrint,
     execute_on_quote, execute_resting_on_trade, quote_reference_price,
@@ -20,24 +18,20 @@ use sim_core::facade::{
     FacadeInitialState, FacadeInput, FacadeRules, SimulatorFacade, SubmitOrderInput,
 };
 use sim_core::hash::{ZERO_HASH, hash_hex, sha256};
-use sim_core::instrument::{
-    AssetClass, InstrumentDefinition, ProductType, SettlementKind,
-};
+use sim_core::instrument::{AssetClass, InstrumentDefinition, ProductType, SettlementKind};
 use sim_core::kernel::{InputEnvelope, Kernel, KernelError};
 use sim_core::ledger::{
     Ledger, LedgerAccount, LedgerError, LedgerSnapshot, NewTransaction, Posting,
 };
 use sim_core::numeric::{
-    DecimalScale, MoneyMinor, NumericError, PriceAtoms, QtyAtoms, RatePpb, Rounding,
-    rescale_i64,
+    DecimalScale, MoneyMinor, NumericError, PriceAtoms, QtyAtoms, RatePpb, Rounding, rescale_i64,
 };
 use sim_core::orders::{
     NewOrder, OrderError, OrderKind, OrderState, OrderStatus, Side, TimeInForce, TopOfBook,
 };
 use sim_core::positions::{FillSide, Position, PositionMath};
 use sim_core::risk::{
-    Leverage, LiquidationState, RiskError, RiskProfile, RiskState, margin_snapshot,
-    precheck_fill,
+    Leverage, LiquidationState, RiskError, RiskProfile, RiskState, margin_snapshot, precheck_fill,
 };
 
 const SESSION_ID: &str = "m1-13-conformance";
@@ -245,13 +239,13 @@ fn reduce_only_excess() -> String {
         )
         .unwrap();
     let accepted = outcome.accepted_quantity.get();
-    let order = orders.get(outcome.order_id).unwrap();
+    let current_order = orders.get(outcome.order_id).unwrap();
     format!(
         "requested=8,accepted={accepted},rejected_excess={},filled={},final_qty={},status={:?}",
         8 - accepted,
-        order.filled.get(),
+        current_order.filled.get(),
         state.quantity_atoms,
-        order.status
+        current_order.status
     )
 }
 
@@ -396,16 +390,10 @@ fn midpoint_rounding() -> String {
         ask: PriceAtoms::new(103),
         ask_size: QtyAtoms::new(1),
     };
-    let buy = quote_reference_price(
-        quote,
-        QuoteReference::Midpoint(MidpointRounding::TowardBid),
-    )
-    .unwrap();
-    let sell = quote_reference_price(
-        quote,
-        QuoteReference::Midpoint(MidpointRounding::TowardAsk),
-    )
-    .unwrap();
+    let buy = quote_reference_price(quote, QuoteReference::Midpoint(MidpointRounding::TowardBid))
+        .unwrap();
+    let sell = quote_reference_price(quote, QuoteReference::Midpoint(MidpointRounding::TowardAsk))
+        .unwrap();
     format!(
         "buy_passive_mid={},sell_passive_mid={}",
         buy.get(),
@@ -505,7 +493,10 @@ fn ambiguous_bar() -> String {
         F0Config::default(),
     )
     .unwrap();
-    assert_eq!(outcome.uncertainty, vec![UncertaintyFlag::IntrabarAmbiguous]);
+    assert_eq!(
+        outcome.uncertainty,
+        vec![UncertaintyFlag::IntrabarAmbiguous]
+    );
     format!(
         "triggered={},filled={},status={:?},warning=IntrabarAmbiguous",
         outcome.triggered,
@@ -726,7 +717,9 @@ fn futures_expiry() -> String {
         event_seq: 9,
         cash_delta: MoneyMinor::new(12),
     };
-    let posted = economics.post_settlement(&mut ledger, flow.clone()).unwrap();
+    let posted = economics
+        .post_settlement(&mut ledger, flow.clone())
+        .unwrap();
     let retry = economics.post_settlement(&mut ledger, flow).unwrap();
     format!(
         "active_before={active_before},active_at_expiry={active_at_expiry},cash={},settlement={},posted={posted},retry={retry}",
@@ -736,11 +729,8 @@ fn futures_expiry() -> String {
 }
 
 fn split_working_order() -> String {
-    let adjusted_position = split_position(
-        position(5, 100, 7),
-        SplitRatio::new(2, 1).unwrap(),
-    )
-    .unwrap();
+    let adjusted_position =
+        split_position(position(5, 100, 7), SplitRatio::new(2, 1).unwrap()).unwrap();
     let mut orders = OrderState::new();
     let id = orders
         .submit(
@@ -756,8 +746,8 @@ fn split_working_order() -> String {
         )
         .unwrap()
         .order_id;
-    let adjusted_order = split_order(orders.get(id).unwrap(), SplitRatio::new(2, 1).unwrap())
-        .unwrap();
+    let adjusted_order =
+        split_order(orders.get(id).unwrap(), SplitRatio::new(2, 1).unwrap()).unwrap();
     let OrderKind::Limit { limit_price } = adjusted_order.kind else {
         panic!("split must preserve limit order kind");
     };
@@ -876,7 +866,7 @@ fn snapshot_resume() -> String {
         1,
     );
     let order_id = match &submitted[0].payload {
-        DomainEventPayload::OrderSubmitted(order) => order.id,
+        DomainEventPayload::OrderSubmitted(current_order) => current_order.id,
         _ => panic!("expected submitted order"),
     };
     let checkpoint = uninterrupted.snapshot();
@@ -925,7 +915,10 @@ fn integer_extremes() -> String {
 fn required_golden_scenarios_match_committed_vectors() {
     let mut count = 0_usize;
     let mut canonical_vector_set = String::new();
-    for line in GOLDEN.lines().filter(|line| !line.is_empty() && !line.starts_with('#')) {
+    for line in GOLDEN
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+    {
         let mut fields = line.splitn(3, '|');
         let name = fields.next().unwrap();
         let expected_hash = fields.next().unwrap();
@@ -941,7 +934,10 @@ fn required_golden_scenarios_match_committed_vectors() {
         canonical_vector_set.push('\n');
         count += 1;
     }
-    assert_eq!(count, 24, "all required docs/testing.md scenarios must be pinned");
+    assert_eq!(
+        count, 24,
+        "all required docs/testing.md scenarios must be pinned"
+    );
     assert_eq!(
         hash_hex(&sha256(canonical_vector_set.as_bytes())),
         EXPECTED_VECTOR_SET_HASH,
@@ -980,7 +976,11 @@ fn seeded_property_invariants_are_reproducible() {
             .apply_fill(side, quantity, price, position_math())
             .unwrap();
         let signed = i64::try_from(quantity.get()).unwrap();
-        signed_fill_sum += if side == FillSide::Buy { signed } else { -signed };
+        signed_fill_sum += if side == FillSide::Buy {
+            signed
+        } else {
+            -signed
+        };
 
         let amount = i64::try_from((value >> 8) % 1_000 + 1).unwrap();
         ledger
@@ -1154,7 +1154,10 @@ fn critical_guard_mutation_targets_fail_closed() {
         .unwrap()
         .order_id;
     terminal.record_fill(terminal_id, QtyAtoms::new(1)).unwrap();
-    assert_eq!(terminal.get(terminal_id).unwrap().status, OrderStatus::Filled);
+    assert_eq!(
+        terminal.get(terminal_id).unwrap().status,
+        OrderStatus::Filled
+    );
     let terminal_before = terminal.clone();
     assert_eq!(
         terminal.record_fill(terminal_id, QtyAtoms::new(1)),
