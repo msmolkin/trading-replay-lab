@@ -48,7 +48,9 @@ impl MboBook {
     /// Visible source order by provider id.
     #[must_use]
     pub fn visible_order(&self, source_order_id: &str) -> Option<&VisibleOrder> {
-        self.enabled.then(|| self.orders.get(source_order_id)).flatten()
+        self.enabled
+            .then(|| self.orders.get(source_order_id))
+            .flatten()
     }
 
     /// Source ids at one exact price in front-to-back queue order.
