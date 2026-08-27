@@ -155,7 +155,9 @@ def test_exact_replacement_persists_flat_canonical_payload() -> None:
 def test_replacement_quote_shortcut_fails_closed_without_state_change() -> None:
     commands_service, engine = service()
 
-    with pytest.raises(CommandServiceError, match="unsupported command fields: price_reference") as caught:
+    with pytest.raises(
+        CommandServiceError, match="unsupported command fields: price_reference"
+    ) as caught:
         commands_service.replace_order(
             session_id="session-1",
             principal_id="principal-1",
