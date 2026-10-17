@@ -11,3 +11,9 @@ Validation: parsed before/after equality permits only runs-on changes; default/c
 Hosted rollback values (retain JSON quotation marks): STUDIO_CI_UBUNTU_LATEST = "ubuntu-latest".
 
 Runtime prerequisites: Before native admission, preseed Python3.14.7 as a writable venv at the effective /Users/runner/hostedtoolcache/Python/3.14.7/arm64 plus arm64.complete (same external toolcache symlink pattern). Official uv0.13.1 has exact DarwinARM64 artifact; setup-python fallback on Mac uses sudo installer. setup-node/rustup self-provision exact Node24.19.0 and Rust1.98.0 ARM64 versions; maintain writable toolcache, HOME, CARGO_HOME, RUSTUP_HOME and setup-node prefix for corepack/pnpm.
+
+## 2026-10-17 — Run existing CI on Studio Linux
+
+Moved the six runner defaults in ordinary and nightly CI to the existing Studio Linux ARM64 profile. The original native run failed dependency-cache hashing through the workspace alias and a generated Node CLI guard under a physical path containing spaces. The Linux workspace avoids those path conditions without changing application code, generated contracts, dependency pins, cache inputs or checks. Hosted rollback remains `ubuntu-latest` through the same repository variable.
+
+Verified parsed workflow structure differs only in `runs-on`; the existing 98-repository allowlist and 108 route variables are unchanged. Provisioned and executed pinned Python 3.14.7 as nonadministrator UID1001 in the guest; pip and the ARM64 tool-cache layout pass. The route variable and workflow source were read back exactly. Actual whole-workflow execution is pending and will be recorded separately; the failed native attempt remains historical evidence.

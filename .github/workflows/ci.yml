@@ -15,7 +15,7 @@ concurrency:
 jobs:
   policy:
     name: Repository policy
-    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","macOS","ARM64","studio-macos","studio-run-{0}"]', github.run_id)) }}
+    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -28,7 +28,7 @@ jobs:
 
   web:
     name: Web / contracts
-    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","macOS","ARM64","studio-macos","studio-run-{0}"]', github.run_id)) }}
+    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -65,7 +65,7 @@ jobs:
 
   python:
     name: Python
-    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","macOS","ARM64","studio-macos","studio-run-{0}"]', github.run_id)) }}
+    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -85,7 +85,7 @@ jobs:
 
   rust:
     name: Rust
-    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","macOS","ARM64","studio-macos","studio-run-{0}"]', github.run_id)) }}
+    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
       - name: Install pinned Rust
@@ -107,7 +107,7 @@ jobs:
 
   contracts:
     name: Generated contracts / compatibility
-    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","macOS","ARM64","studio-macos","studio-run-{0}"]', github.run_id)) }}
+    runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
