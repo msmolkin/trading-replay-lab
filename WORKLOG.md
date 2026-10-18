@@ -42,4 +42,6 @@ Verified: Go `go test -race ./...`, `go vet ./...`, repeated deterministic core 
 
 Known limits: the playable run is a disclosed synthetic F1 fixture, not real historical data. Sessions are in memory, not persisted or idempotent, and the fixed path is knowable after replay. Real provider adapters, blind/random episode selection, persistence, and higher-fidelity execution remain follow-up milestones. Local Node is 24.21.0 while the repository pins 24.19.0; checks passed with only the expected engine warning.
 
-Current state: work is verified locally and the one-command development game is running. Next: commit, push the public repository, confirm remote visibility/head, and leave the fresh run open for Michael.
+Publication: committed as `580ddfe` and pushed to the public `msmolkin/trading-replay-lab` `main` branch. GitHub reported the repository PUBLIC with `main` as default, and local/remote commit IDs matched after push. CI run `39086143124` parsed into all five expected jobs and remained queued awaiting the configured self-hosted Studio Linux runner; it had not failed.
+
+Current state: the one-command development game is running locally and a fresh active run is open for Michael. The public source is current. Next: let CI complete when the runner is available, then take M0-05 (generated Go contracts) or the real-data ingestion/episode-selection milestones without adding behavior to the legacy Rust paths.
