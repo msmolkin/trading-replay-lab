@@ -83,27 +83,22 @@ jobs:
       - run: mypy --strict apps/api/src workers/ingest/src apps/api/tests workers/ingest/tests
       - run: pytest -q apps/api/tests workers/ingest/tests
 
-  rust:
-    name: Rust
+  go:
+    name: Go
     runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned Rust
-        run: |
-          rustup toolchain install 1.98.0 --profile minimal --component rustfmt --component clippy
-          rustup default 1.98.0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: .go-version
       - uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo check --workspace --all-targets --locked
-      - run: cargo test --workspace --all-targets --locked
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - run: test -z "$(gofmt -l cmd internal)"
+      - run: go vet ./...
+      - run: go test -race ./...
 
   contracts:
     name: Generated contracts / compatibility
@@ -117,7 +112,10 @@ jobs:
         with:
           node-version-file: .node-version
           package-manager-cache: false
-      - name: Install pinned Rust
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: .go-version
+      - name: Install legacy Rust contract runtime
         run: |
           rustup toolchain install 1.98.0 --profile minimal
           rustup default 1.98.0

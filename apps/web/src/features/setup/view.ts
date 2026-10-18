@@ -1,16 +1,9 @@
 "use client";
 
-import { createElement, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
+import { createElement, useState } from "react";
 
 import { Button, Dialog, StatusBadge } from "../../components/foundation/index";
-import {
-  canCommit,
-  commitBlockers,
-  effectiveLeverageCap,
-  requiredCapabilities,
-  validateSetup,
-} from "./model";
 import type {
   ChartInterval,
   ExecutionTier,
@@ -18,6 +11,13 @@ import type {
   SetupDraft,
   SetupState,
   VisibilityMode,
+} from "./model";
+import {
+  canCommit,
+  commitBlockers,
+  effectiveLeverageCap,
+  requiredCapabilities,
+  validateSetup,
 } from "./model";
 
 export type SetupFormProps = {

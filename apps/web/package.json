@@ -2,6 +2,7 @@
   "name": "@trl/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,6 +20,7 @@
     "@types/node": "24.0.0",
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",
+    "sharp": "^0.35.5",
     "typescript": "6.0.3"
   }
 }

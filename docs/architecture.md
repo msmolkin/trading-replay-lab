@@ -25,8 +25,11 @@ Web client <---- session API / visibility gate ----> replay coordinator
 apps/
   web/                 Next.js player, setup, review, accessibility
   api/                 FastAPI control plane and visibility-gated queries
-crates/
-  sim-core/            Rust command/state/event kernel
+internal/
+  practice/            Playable Go practice simulator
+  sim/                 Canonical Go command/state/event kernel
+cmd/
+  practice-server/     Local HTTP process used by the playable web game
   sim-cli/             Offline replay and verification tool
 workers/
   ingest/              Python adapters, canonicalization, QA, aggregation
@@ -55,7 +58,7 @@ Owns logical time and delivery of ordered canonical market events to sim-core. I
 
 ### sim-core
 
-Owns order validation that depends on trading state, matching models, order lifecycle, positions, average entry, ledger, fees, funding, margin, liquidation, and deterministic hashes. It performs no network, database, filesystem, or wall-clock I/O. Its interface is a versioned sequence of `InputEnvelope -> Vec<DomainEvent>`.
+Owns order validation that depends on trading state, matching models, order lifecycle, positions, average entry, ledger, fees, funding, margin, liquidation, and deterministic hashes. It performs no network, database, filesystem, or wall-clock I/O. Its interface is a versioned sequence of `InputEnvelope -> []DomainEvent`.
 
 ### Ingestion
 
@@ -63,7 +66,7 @@ Owns provider access, raw caching outside Git, normalization, deduplication, seq
 
 ### Contract package
 
-Owns canonical JSON Schemas, enums, compatibility checks, OpenAPI bindings, and generated TypeScript/Python/Rust representations. Contract generation is one-way from schemas; generated code is not hand-edited.
+Owns canonical JSON Schemas, enums, compatibility checks, OpenAPI bindings, and generated TypeScript/Python/Go representations. Contract generation is one-way from schemas; generated code is not hand-edited. The checked-in Rust output is migration reference until the Go generator task lands.
 
 ## 4. Persistence
 
@@ -145,7 +148,7 @@ Checkpoints make jobs restartable. Raw downloads are content-addressed. Canonica
 
 ### Local
 
-Docker Compose starts web, API, PostgreSQL, and an S3-compatible object store. sim-core runs in-process through a stable binding or as sim-cli for verification. Data and credentials remain on the user's machine.
+The current `pnpm play` command starts the Go practice server and Next.js web app. The full local profile will add the API, PostgreSQL, and an S3-compatible object store. sim-core runs as a Go package behind a stable command/event boundary or through sim-cli for verification. Data and credentials remain on the user's machine.
 
 ### Hosted
 

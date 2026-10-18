@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
+import type { SetupDraft, SetupPreflight, SetupState } from "./model.ts";
 import {
   beginPreflight,
   buildCommitPayload,
@@ -15,7 +15,6 @@ import {
   updateSetupDraft,
   validateSetup,
 } from "./model.ts";
-import type { SetupDraft, SetupPreflight, SetupState } from "./model.ts";
 
 function draft(overrides: Partial<SetupDraft> = {}): SetupDraft {
   return {

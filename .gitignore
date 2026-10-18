@@ -12,6 +12,8 @@ node_modules/
 target/
 dist/
 coverage/
+*.tsbuildinfo
+packages/contracts/generated/rust/Cargo.lock
 *.log
 data/raw/
 data/canonical/

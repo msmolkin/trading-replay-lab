@@ -68,7 +68,7 @@ Test coarse candles whose interval crosses `revealed_through`; expected OHLCV de
 
 ## 5. Differential and metamorphic tests
 
-- Compare Rust fixed-point calculations to a slow arbitrary-precision reference implementation in tests.
+- Compare Go fixed-point calculations to a slow arbitrary-precision reference implementation in tests.
 - Split one order into equivalent sequential fills at the same price and verify final economic state, while allowing distinct event history.
 - Change playback speed and UI batching; canonical result must remain identical.
 - Repartition the same canonical input without changing event order; replay result must remain identical.

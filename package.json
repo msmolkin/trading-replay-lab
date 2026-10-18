@@ -7,6 +7,7 @@
     "node": "24.19.0"
   },
   "scripts": {
+    "play": "bash scripts/play.sh",
     "format": "biome format --write apps/web packages/contracts",
     "format:check": "biome format apps/web packages/contracts",
     "lint": "biome lint apps/web packages/contracts",

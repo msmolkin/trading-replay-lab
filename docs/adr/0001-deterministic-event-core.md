@@ -1,6 +1,6 @@
 # ADR-0001: Deterministic event-sourced simulation core
 
-- Status: accepted
+- Status: superseded by ADR-0002
 - Date: 2026-08-23
 - Owners: repository maintainers
 

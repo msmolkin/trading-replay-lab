@@ -38,7 +38,10 @@ The target monorepo layout is defined in `docs/architecture.md`. Until scaffoldi
 
 - `apps/web`: player and review UI; no matching/accounting logic.
 - `apps/api`: authentication, setup, visibility gate, session control, queries.
-- `crates/sim-core`: authoritative matching, positions, ledger, risk, liquidation.
+- `internal/practice`: currently playable Go practice simulator.
+- `internal/sim`: target Go packages for canonical matching, positions, ledger, risk, and liquidation.
+- `cmd`: Go service and verifier entry points.
+- `crates`: legacy Rust migration reference only; do not add new product behavior there.
 - `workers/ingest`: provider adapters, normalization, validation, aggregation.
 - `packages/contracts`: schemas and generated clients/models.
 - `fixtures`: small synthetic or freely redistributable test inputs only.

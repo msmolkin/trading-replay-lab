@@ -8,28 +8,28 @@ Status meanings: `ready` can be claimed now; `blocked` is waiting on listed task
 
 ```text
 M0-01 bootstrap
-  ├─ M0-02 contracts ─┬─ simulator stream ─ risk ─ conformance
+  ├─ M0-02 contracts ─ M0-05 Go contracts ─┬─ simulator stream ─ risk ─ conformance
   │                   ├─ API/session ─ visibility ─ integration
   │                   ├─ ingestion base ─ free crypto adapter ─ catalog
   │                   └─ web base ─ setup/chart/ticket ─ game shell
   └─ M0-03 CI/tooling supports every branch
 ```
 
-After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed in parallel. Contract changes are serialized through M0-02's generated-schema process.
+After M0-01 and M0-02, ingestion, API, and web work can proceed in parallel. Canonical Go simulator work also requires M0-05. Contract changes are serialized through the generated-schema process.
 
 ## Milestone 0 — Repository foundation
 
 ### M0-01 — Monorepo bootstrap (`done`)
 
 - Depends: none
-- Owns: root build manifests/lockfiles, `apps/`, `crates/`, `workers/`, `packages/` directory scaffolds only
-- Deliver: pinned Rust/Python/Node toolchains; workspace commands for format/lint/type/test; minimal hello-world packages; `.env.example`.
+- Owns: root build manifests/lockfiles, `apps/`, `internal/`, `cmd/`, `workers/`, `packages/` directory scaffolds only
+- Deliver: pinned Go/Python/Node toolchains; workspace commands for format/lint/type/test; minimal hello-world packages; `.env.example`.
 - Accept: clean clone executes one documented bootstrap command and all empty-stack checks; no domain behavior is introduced.
 
 ### M0-02 — Contract source and code generation (`done`)
 
 - Owns: `packages/contracts/**`, `schemas/**`
-- Deliver: JSON Schema source layout; generated TypeScript/Python/Rust models; schema version check; order, market event, manifest, command/event, visibility, and result bundle types.
+- Deliver: JSON Schema source layout; generated TypeScript/Python models and legacy Rust bindings; schema version check; order, market event, manifest, command/event, visibility, and result bundle types.
 - Accept: valid examples round-trip in all three languages; incompatible major and unsafe JSON integers fail.
 
 ### M0-03 — CI, policy, and repository checks (`done`)
@@ -44,83 +44,92 @@ After M0-01 and M0-02, most simulator, ingestion, API, and web work can proceed 
 - Deliver: deterministic generator and fixture license/provenance manifests for F0/F1/F2 micro-markets.
 - Accept: regeneration is byte-identical and covers timestamp ties, gaps, partial depth, funding, and corporate-action examples.
 
+### M0-05 — Generated Go contracts (`ready`)
+
+- Depends: M0-02
+- Owns: `packages/contracts/generated/go/**`, `packages/contracts/templates/go/**`, contract generator and round-trip wiring for Go
+- Deliver: generated Go models and strict canonical wire validation; keep Rust output only as migration evidence until simulator parity is complete.
+- Accept: every valid/invalid contract fixture agrees across TypeScript, Python, and Go; generator drift check is clean.
+
 ## Milestone 1 — Deterministic simulator
 
-### M1-01 — Fixed-point primitives and instruments (`ready`)
+### M1-01 — Fixed-point primitives and instruments (`blocked`: M0-05)
 
-- Owns: `crates/sim-core/src/numeric/**`, `crates/sim-core/src/instrument/**`
+- Depends: M0-05
+- Owns: `internal/sim/numeric/**`, `internal/sim/instrument/**`
 - Deliver: checked integer price/qty/money/rate types, rounding policies, linear contract math, point-in-time instrument validation.
 - Accept: boundary/overflow tests and differential arbitrary-precision tests pass; no float enters public domain types.
 
-### M1-02 — Event kernel and hash chain (`ready`)
+### M1-02 — Event kernel and hash chain (`blocked`: M0-05)
 
-- Owns: `crates/sim-core/src/kernel/**`, `crates/sim-core/src/hash/**`
+- Depends: M0-05
+- Owns: `internal/sim/kernel/**`, `internal/sim/hash/**`
 - Deliver: pure input transition shell, canonical serialization, ordered output, prior/current hashes, snapshot state-version hooks.
 - Accept: repeated runs and input repartitioning yield identical output; invalid sequence/version fails closed.
 
 ### M1-03 — Order state machine (`blocked`: M1-01, M1-02)
 
-- Owns: `crates/sim-core/src/orders/**`
+- Owns: `internal/sim/orders/**`
 - Deliver: validation/lifecycle, cancel/replace, GTC/IOC/FOK, reduce-only live cap, post-only, marketable-only, stop trigger conversion.
 - Accept: all order-state golden scenarios and generated legal-transition tests pass.
 
 ### M1-04 — Positions and balanced ledger (`blocked`: M1-01, M1-02)
 
-- Owns: `crates/sim-core/src/positions/**`, `crates/sim-core/src/ledger/**`
+- Owns: `internal/sim/positions/**`, `internal/sim/ledger/**`
 - Deliver: average entry, realized P&L, partial close, zero crossing into two accounting legs, balanced postings, economic snapshots.
 - Accept: crossing scenarios reconcile exactly; every transaction balances and reversal basis is correct.
 
 ### M1-05 — F0 bar execution (`blocked`: M1-03, M1-04, M0-04)
 
-- Owns: `crates/sim-core/src/execution/f0/**`
+- Owns: `internal/sim/execution/f0/**`
 - Deliver: next-open markets, limit/stop reach, pessimistic/optimistic/seeded intrabar policy, uncertainty flags, configurable slippage.
 - Accept: no order fills on a prior bar; ambiguous stop/liquidation scenario is pinned and flagged.
 
 ### M1-06 — F1 trade/BBO execution (`blocked`: M1-03, M1-04, M0-04)
 
-- Owns: `crates/sim-core/src/execution/f1/**`
+- Owns: `internal/sim/execution/f1/**`
 - Deliver: quote-based taker model, later-print resting fill eligibility, queue heuristic interface, staleness and size caps.
 - Accept: bid/ask/midpoint, maker approximation, partial IOC, and gap fixtures pass without using future prints.
 
 ### M1-07 — F2 depth and queue model (`blocked`: M1-03, M1-04, M0-04)
 
-- Owns: `crates/sim-core/src/execution/f2/**`
+- Owns: `internal/sim/execution/f2/**`
 - Deliver: L2 book state, snapshot/delta recovery, multi-level sweeps, displayed queue-ahead and cancel allocation policies.
 - Accept: depth conservation, sequence-gap disablement, sweep fills, and queue fixtures pass.
 
 ### M1-08 — F3 MBO queue model (`blocked`: M1-03, M1-04, M0-04)
 
-- Owns: `crates/sim-core/src/execution/f3/**`
+- Owns: `internal/sim/execution/f3/**`
 - Deliver: visible order lifecycle and counterfactual player queue insertion with explicit size/impact caps.
 - Accept: add/modify/cancel/fill/clear and reconnect fixtures reconstruct expected book; uncertainty remains reported.
 
 ### M1-09 — Fees and scheduled economics (`blocked`: M1-01, M1-04)
 
-- Owns: `crates/sim-core/src/economics/**`
+- Owns: `internal/sim/economics/**`
 - Deliver: maker/taker fees/rebates, funding, borrow, dividends, split adjustments, futures settlement hooks.
 - Accept: charges post exactly once with declared rounding; split preserves value and adjusts working orders.
 
 ### M1-10 — Margin, leverage, and liquidation (`blocked`: M1-03, M1-04, M1-09)
 
-- Owns: `crates/sim-core/src/risk/**`
+- Owns: `internal/sim/risk/**`
 - Deliver: synthetic isolated initial/maintenance margin, working-order reservation, 1×–50× changes, margin precheck, liquidation state machine.
 - Accept: leverage never scales P&L, invalid decrease is atomic, reversal margin partial is correct, funding can deterministically liquidate.
 
 ### M1-11 — Simulator facade and snapshots (`blocked`: M1-05, M1-06, M1-07, M1-09, M1-10)
 
-- Owns: `crates/sim-core/src/lib.rs`, `crates/sim-core/src/facade/**`, `crates/sim-core/src/snapshot/**`
+- Owns: `internal/sim/facade/**`, `internal/sim/snapshot/**`, public Go package boundary
 - Deliver: public versioned `InputEnvelope -> DomainEvent[]`, execution-model registry, periodic state snapshots and restore.
 - Accept: uninterrupted/restored runs match hashes; unsupported tier/order combinations fail with stable codes.
 
-### M1-12 — Offline verifier CLI (`blocked`: M1-11, M0-02)
+### M1-12 — Offline verifier CLI (`blocked`: M1-11, M0-05)
 
-- Owns: `crates/sim-cli/**`
+- Owns: `cmd/sim-cli/**`
 - Deliver: replay canonical inputs, inspect ledger, verify proof bundle/hash chain, emit machine-readable result.
 - Accept: valid bundle reproduces result; tampered command/event/manifest hash identifies exact failure.
 
 ### M1-13 — Simulator conformance/property suite (`blocked`: M1-11, M0-04)
 
-- Owns: `crates/sim-core/tests/**`, `fixtures/scenarios/**` expected simulator outputs
+- Owns: `internal/sim/**/*_test.go`, `fixtures/scenarios/**` expected simulator outputs
 - Deliver: all scenarios in `docs/testing.md`, property strategies, platform determinism tests, mutation targets for critical guards.
 - Accept: all normative invariants run in CI and seeded failures are reproducible.
 

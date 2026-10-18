@@ -4,7 +4,18 @@ Trading Replay Lab is a historical-market game for testing whether a trading pro
 
 The player enters a sealed historical episode, changes leverage from 1× to 50×, and submits long, sell, short, cover, reverse, reduce-only, post-only, marketable-only, limit, market, and stop orders. A deterministic replay engine applies the best execution model the available data can justify. The session records every decision, fill, fee, funding charge, margin change, liquidation, and information reveal.
 
-This repository currently contains the implementation-ready specification and parallel work graph. It intentionally contains no licensed market data.
+This repository contains an implementation-ready specification, a parallel work graph, and a playable synthetic practice run backed by the Go simulator. It intentionally contains no licensed market data.
+
+## Play now
+
+Requires the pinned Node and Go versions. From a clean clone:
+
+```bash
+corepack pnpm install --frozen-lockfile
+corepack pnpm play
+```
+
+Open <http://127.0.0.1:3000>. The included run uses disclosed synthetic F1 data; historical-data adapters and blind episode selection remain on the task graph.
 
 ## Start here
 
@@ -31,17 +42,17 @@ This repository currently contains the implementation-ready specification and pa
 
 - Web: Next.js, React, TypeScript, TradingView Lightweight Charts
 - API/control plane: FastAPI, Python, PostgreSQL
-- Deterministic simulator: Rust, exposed through a versioned command/event boundary
+- Deterministic simulator: Go, exposed through a versioned command/event boundary
 - Ingestion: Python workers writing canonical Parquet partitions and manifests
 - Local analytics: DuckDB; object storage in production; Redis only for ephemeral jobs
-- Contracts: JSON Schema plus generated TypeScript/Python/Rust models
+- Contracts: JSON Schema plus generated TypeScript/Python models; Go generation is the next contract migration task
 - Deployment: Docker Compose locally, container-compatible services in production
 
 These choices are decisions for the first implementation, not invitations for each agent to select a different stack. Propose changes through an ADR.
 
 ## Development bootstrap
 
-The repository pins Node, Python, and Rust in `.node-version`, `.python-version`, and `rust-toolchain.toml`. Install those exact language versions plus GNU Make; Node's Corepack installs the pinned pnpm release during bootstrap.
+The repository pins Node, Python, and Go in `.node-version`, `.python-version`, and `.go-version`. Install those exact language versions plus GNU Make; Node's Corepack installs the pinned pnpm release during bootstrap.
 
 From a clean clone, the single bootstrap command is:
 
@@ -49,7 +60,7 @@ From a clean clone, the single bootstrap command is:
 make bootstrap
 ```
 
-It verifies the pinned language versions, installs JavaScript and Python dependencies, fetches the Rust workspace, then runs every empty-stack formatter check, linter, type check, and test. After bootstrap, rerun the complete suite with `make check`; use `make format` to apply formatting.
+It verifies the pinned language versions, installs JavaScript and Python dependencies, then runs every formatter check, linter, type check, and test. After bootstrap, rerun the complete suite with `make check`; use `make format` to apply formatting.
 
 ## Intended modes
 
@@ -62,7 +73,7 @@ The game is simulation and research software, not a broker, exchange, or promise
 
 ## Status
 
-Implementation is underway from Milestone 0. The repository bootstrap is the first dependency for contracts, CI, simulator, ingestion, API, and web work; follow [tasks/README.md](tasks/README.md) for the dependency graph.
+The synthetic practice game is playable end to end. It is not yet the full historical product: real-data ingestion, blind episode selection, persistence, and the higher-fidelity simulator remain on [the task graph](tasks/README.md). The old Rust crates are retained only as migration reference; new simulator work targets Go under `internal/` and `cmd/`.
 
 ## Reusable Codex skill
 

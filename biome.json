@@ -1,7 +1,11 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
   "files": {
-    "includes": ["apps/web/**/*.{js,jsx,ts,tsx,json}", "packages/contracts/**/*.{js,ts,json}"]
+    "includes": [
+      "apps/web/**/*.{js,jsx,ts,tsx,json}",
+      "packages/contracts/**/*.{js,ts,json}",
+      "!apps/web/.next"
+    ]
   },
   "formatter": {
     "enabled": true,
