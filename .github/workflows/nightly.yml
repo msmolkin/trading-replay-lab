@@ -12,10 +12,6 @@ jobs:
   full-stack-checks:
     runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
     timeout-minutes: 45
-    env:
-      # Keep pinned components separate from the runner image's Rust installation.
-      RUSTUP_HOME: ${{ runner.temp }}/trl-rustup
-      CARGO_HOME: ${{ runner.temp }}/trl-cargo
     steps:
       - uses: actions/checkout@v5
         with:
@@ -32,6 +28,10 @@ jobs:
           go-version-file: .go-version
       - name: Install legacy Rust contract runtime and pnpm
         run: |
+          # Keep pinned components separate from the runner image's Rust installation.
+          export RUSTUP_HOME="$RUNNER_TEMP/trl-rustup"
+          export CARGO_HOME="$RUNNER_TEMP/trl-cargo"
+          printf 'RUSTUP_HOME=%s\nCARGO_HOME=%s\n' "$RUSTUP_HOME" "$CARGO_HOME" >> "$GITHUB_ENV"
           rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt
           rustup default 1.98.0
           corepack enable

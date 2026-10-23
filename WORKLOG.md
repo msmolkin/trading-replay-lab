@@ -10,6 +10,8 @@ The two jobs that invoke Rust now use private per-job `runner.temp` Rustup/Cargo
 
 Repository guidance, README, M0-03 ownership, testing/architecture guidance, ADR-0002, actual workflow source, and the compatibility/round-trip callers were inspected. The isolated audit checkout was clean; the two existing feature PRs own unrelated paths. Parsed structural reversal of both workflows proves all existing checks, triggers, routing and pins are unchanged. Every shell block in both modified jobs parses with `bash -n`; repository policy plus its secret/data rejection self-test and `git diff --check` pass. System Python has no PyYAML and the historical global venv is absent on this host, so structural validation used the installed system Ruby/Psych parser. No local build was run. Live hosted workflow results are pending and will be recorded below.
 
+The first source `646d0bd` used `runner.temp` in job-level `env`, which GitHub rejected as an unavailable expression context before any job executed (`39896585501` / `39896584519`). The YAML parser did not cover GitHub expression contexts. Corrected the existing setup shell to export the homes from `$RUNNER_TEMP` and persist them through `$GITHUB_ENV`, as supported by GitHub's workflow-command documentation. The rejected runs remain explicit evidence; they did not exercise tests.
+
 ## 2026-10-16 — Studio CI migration
 
 Goal: move existing CI compute to the local Studio with an explicit hosted rollback.
