@@ -1,5 +1,15 @@
 # Worklog
 
+## 2026-10-22 — Restore free hosted CI without shared Rust component conflicts
+
+Goal: retain GitHub Actions orchestration and return this public repository's ordinary checks to free hosted Ubuntu compute, preserving every test and contract check.
+
+The October 22 Actions audit restored `STUDIO_CI_UBUNTU_LATEST` to the documented `"ubuntu-latest"` profile. Nightly run `39773688135`, attempt 2 at source `9271e504`, then reached real hosted execution: policy, workspace checks, and generated drift passed, but cross-language compatibility failed when rustup tried to add `rustfmt` and found a conflicting `bin/cargo-fmt`. No contract assertion failed before that setup error.
+
+The two jobs that invoke Rust now use private per-job `runner.temp` Rustup/Cargo homes and install Rust 1.98.0 with the `clippy,rustfmt` components already required by `rust-toolchain.toml`. This avoids inheriting the runner image's component state and makes provisioning complete before contract execution. Application code, pins, triggers, runner expressions, existing caches, and all checks are preserved. No deployment, release, provider call, or app data is involved.
+
+Repository guidance, README, M0-03 ownership, testing/architecture guidance, ADR-0002, actual workflow source, and the compatibility/round-trip callers were inspected. The isolated audit checkout was clean; the two existing feature PRs own unrelated paths. Parsed structural reversal of both workflows proves all existing checks, triggers, routing and pins are unchanged. Every shell block in both modified jobs parses with `bash -n`; repository policy plus its secret/data rejection self-test and `git diff --check` pass. System Python has no PyYAML and the historical global venv is absent on this host, so structural validation used the installed system Ruby/Psych parser. No local build was run. Live hosted workflow results are pending and will be recorded below.
+
 ## 2026-10-16 — Studio CI migration
 
 Goal: move existing CI compute to the local Studio with an explicit hosted rollback.

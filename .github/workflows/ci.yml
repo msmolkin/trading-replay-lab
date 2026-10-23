@@ -103,6 +103,10 @@ jobs:
   contracts:
     name: Generated contracts / compatibility
     runs-on: ${{ fromJSON(format(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.STUDIO_CI_UBUNTU_LATEST || '["self-hosted","Linux","ARM64","studio-linux","studio-run-{0}"]', github.run_id)) }}
+    env:
+      # Keep pinned components separate from the runner image's Rust installation.
+      RUSTUP_HOME: ${{ runner.temp }}/trl-rustup
+      CARGO_HOME: ${{ runner.temp }}/trl-cargo
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -117,7 +121,7 @@ jobs:
           go-version-file: .go-version
       - name: Install legacy Rust contract runtime
         run: |
-          rustup toolchain install 1.98.0 --profile minimal
+          rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt
           rustup default 1.98.0
       - name: Generated-code drift
         run: |
