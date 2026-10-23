@@ -12,6 +12,8 @@ Repository guidance, README, M0-03 ownership, testing/architecture guidance, ADR
 
 The first source `646d0bd` used `runner.temp` in job-level `env`, which GitHub rejected as an unavailable expression context before any job executed (`39896585501` / `39896584519`). The YAML parser did not cover GitHub expression contexts. Corrected the existing setup shell to export the homes from `$RUNNER_TEMP` and persist them through `$GITHUB_ENV`, as supported by GitHub's workflow-command documentation. The rejected runs remain explicit evidence; they did not exercise tests.
 
+Verified corrected source `4a6ea1c44dec577a08f883dfbbadf7da13fe5dfa`: ordinary push CI `39896705951` passed all five jobs on hosted `ubuntu-latest`; the one manual Nightly dispatch `39896713116` passed its full-stack job on the same hosted profile. Actual logs show five Rust components provisioned, the private homes present in subsequent steps, clean generated contracts, and cross-language round trips passing all 10 valid and 8 invalid fixtures. A disposable shell fixture also verified current-step exports and persisted environment values with space-containing temporary paths. The existing extended-suite placeholder hooks remain placeholders and are not new browser/mutation/performance acceptance evidence. Source/workflow hashes and job/step receipts are retained in the central Actions audit. No local compilation, app release, deployment, or additional rerun was needed.
+
 ## 2026-10-16 — Studio CI migration
 
 Goal: move existing CI compute to the local Studio with an explicit hosted rollback.
