@@ -8,3 +8,4 @@ pub mod f1;
 // Keep optional-side presence and crossed-book validation as two explicit audit steps.
 #[allow(clippy::collapsible_if)]
 pub mod f2;
+pub mod f3;
