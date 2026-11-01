@@ -1,5 +1,15 @@
 # Worklog
 
+## 2026-11-01 — Reconcile completed Tardis adapter
+
+Merged the existing M2-06 branch at `a0ce4e3ecea3f093908158cbe8fea91fc3045d8d` into current main `713270626b4ba03613a0001bb7c7f6c7435d4f0c`. The adapter remains an explicitly constructed ingestion component; it is not connected to the synthetic practice game and this change performs no provider request, service deployment or real trading action.
+
+The original branch's existing negative-funding test failed (7 passed, 1 failed). Corrected decimal normalization to permit signed funding rates while retaining the existing nonnegative quantity/value guards. Also fixed one strict typing error in quality flags, applied the existing formatter, and renamed an ephemeral local bearer value to avoid the repository scanner's populated-token false positive without weakening the scanner. Historical PR checks failed on formatting and this scanner diagnostic; those failures were not billing failures.
+
+Verified with pinned Python 3.14.7: all API/ingestion tests pass (100 passed, 0 skipped), Ruff formatting/lint pass, strict mypy passes for 68 files, repository policy/self-test passes, and generated contracts have no drift. Full schema compatibility and cross-language round trips pass on Alienware using task-isolated Rust 1.98.0, Node 24.22.1 and Python 3.12.3 (10 valid / 8 invalid fixtures). The first local compatibility attempt failed at a sandboxed crates.io lookup before compiling; the remote provisioning log retains a post-install Rustup-home diagnostic, followed by successful actual checks. No local Rust compilation occurred. Web/Go code and contracts are unchanged; no fresh frontend build, browser journey or live licensed-data smoke is claimed for this ingestion-only merge.
+
+Reviewed all remote/source tips: older feature branches are contained or patch-equivalent to recorded merged PRs. The separate pre-migration F3 branch `58517cdc1f50a17fb0ee97767002f46cb230c4bc` remains preserved and unmerged, with its source/tests and passing historical CI intact. It implements an unconnected Rust library module; the playable launcher, HTTP proxy and core use Go, and even the legacy facade advertises only F0/F1/F2. Later explicit Go direction and the accepted Go ADR make integrating a new Rust feature inappropriate here; a future Go migration can reuse that work. This is a deliberate hold, not a claim that F3 is broken or already integrated.
+
 ## 2026-10-22 — Restore free hosted CI without shared Rust component conflicts
 
 Goal: retain GitHub Actions orchestration and return this public repository's ordinary checks to free hosted Ubuntu compute, preserving every test and contract check.
